@@ -26,6 +26,12 @@ def corpus_at_root(monkeypatch, tmp_path):
 
 
 @pytest.fixture
+def corpus_checked_out(monkeypatch, tmp_path):
+    """`corpus` with `.source/docs/` checked out at the upstream's head and nothing stale."""
+    return _make(monkeypatch, tmp_path, checkout=True)
+
+
+@pytest.fixture
 def corpus_stale(monkeypatch, tmp_path):
     """`corpus` with `docs:a.md` and `docs:b.md` stale and `.source/docs/` checked out."""
     return _make(monkeypatch, tmp_path, stale=("docs:a.md", "docs:b.md"), checkout=True)
