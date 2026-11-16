@@ -1,10 +1,11 @@
-"""The capabilities the refresh nodes call: readiness, the batches to scan, a source's update, the merge of the scans, the
-concept and summary setters, and `meta`.
+"""The capabilities the refresh nodes call: readiness, freshness and whether a refresh is needed, the batches to scan, a
+source's update, the merge of the scans, the concept and summary setters, `meta`, the summaries' previews and the embeddings.
 
 Each edits `index.yaml` with the layout-keeping writer of `index.py`, and `config.yaml` line by line: a node never edits
 either file by text (CRP-4). A function that writes takes `now`, the time it records.
 """
 
+import json
 import posixpath
 import re
 import subprocess
@@ -13,6 +14,9 @@ from pathlib import Path, PurePosixPath
 import yaml
 
 from hiivmind_corpus.index import _graph_without, _renderer, _split, _without, apply_scan, load_index, stale_files, write_entries
+from hiivmind_corpus.run import SCRIPTS, run_script
+from hiivmind_corpus.sources import kind_of
+from hiivmind_corpus.status import _embeddings_generated_at, _when, corpus_status
 
 BATCH = 30   # files in one scan run
 PLACEHOLDER = "Run hiivmind-corpus-build"   # what the build's placeholder index.md says
@@ -232,3 +236,78 @@ def set_summary(corpus: Path, entry_id: str, summary: str, now: str) -> dict:
     if not _set_field(corpus, {entry_id: summary}, "summary", now):
         raise KeyError(f"index.yaml has no entry `{entry_id}`")
     return {"ok": True}
+
+
+# --- status, previews and embeddings ----------------------------------------------------------------------------------
+
+def source_freshness(corpus: Path) -> list[dict]:
+    """Each source of `config.yaml`, in its order: `{"id", "type", "freshness": "current" | "behind" | "unknown", "error"}`,
+    as `corpus_status` finds it. Clones nothing and changes nothing."""
+    corpus = Path(corpus)
+    config = yaml.safe_load((corpus / "config.yaml").read_text()) or {}
+    found = []
+    for source in config.get("sources") or []:
+        kind = kind_of(source)
+        if kind is None:
+            freshness, error = "unknown", f"source type `{source.get('type')}` is not handled by this instance yet"
+        else:
+            freshness, error = kind.freshness(source, corpus)
+        found.append({"id": source["id"], "type": source.get("type"), "freshness": freshness, "error": error})
+    return found
+
+
+def refresh_needed(corpus: Path) -> bool:
+    """False only when every source is current, no entry is stale and the embeddings do not lag (0, or no figure). A source
+    whose freshness is unknown, or a status that raises, needs a refresh: the pre-check is never a gate."""
+    try:
+        status = corpus_status(corpus, SCRIPTS)
+    except Exception:
+        return True
+    if any(s["freshness"] == "unknown" for s in status["sources"]):
+        return True
+    return status["refresh_needed"] or status["embeddings_lag"] not in (0, None)
+
+
+def embeddings_lag(corpus: Path) -> int | None:
+    """The entries indexed after the embeddings were made; None without an embeddings table. A `lance_meta.py` that fails
+    raises `RuntimeError`."""
+    lance = Path(corpus) / "index-embeddings.lance"
+    if not lance.exists():
+        return None
+    embedded_at = _embeddings_generated_at(lance, SCRIPTS)
+    if embedded_at is None:
+        return None
+    entries = load_index(Path(corpus) / "index.yaml").get("entries") or []
+    return sum(1 for e in entries if (when := _when(e.get("last_indexed"))) and when > embedded_at)
+
+
+def embeddings_status(corpus: Path) -> str:
+    """`absent` when the corpus has no `index-embeddings.lance`; else what `detect.py` prints: `ready`, `no-model`,
+    `not-installed`, or anything else it says (empty when it says nothing)."""
+    if not (Path(corpus) / "index-embeddings.lance").exists():
+        return "absent"
+    return run_script("detect.py").stdout.strip()
+
+
+def embed(corpus: Path) -> dict:
+    """`embed.py` over `index.yaml` into `index-embeddings.lance/`, which embeds again only the entries whose text changed:
+    `{"ok": True, "error": None}`, or `{"ok": False, "error": <what it said>}`. It never downloads a model: call it only when
+    `embeddings_status` is `ready`."""
+    corpus = Path(corpus)
+    done = run_script("embed.py", str(corpus / "index.yaml"), f"{corpus / 'index-embeddings.lance'}/")
+    if done.returncode:
+        return {"ok": False, "error": " ".join((done.stderr or done.stdout).split()) or f"exit {done.returncode}"}
+    return {"ok": True, "error": None}
+
+
+def verify_previews(corpus: Path, entry_ids: list[str]) -> list[dict]:
+    """`verify_entries.py`'s previews of these entries: `[{entry_id, title, summary, source_path, content_preview}]`. A failure
+    raises `RuntimeError` with what it said."""
+    corpus = Path(corpus)
+    done = run_script(
+        "verify_entries.py", "--index", str(corpus / "index.yaml"), "--source-root", f"{corpus / '.source'}/",
+        "--config", str(corpus / "config.yaml"), "--entries", ",".join(entry_ids),
+    )
+    if done.returncode:
+        raise RuntimeError(f"verify_entries.py exited {done.returncode}: {' '.join((done.stderr or done.stdout).split())}")
+    return json.loads(done.stdout)
