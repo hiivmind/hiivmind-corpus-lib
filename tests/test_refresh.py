@@ -77,6 +77,7 @@ def test_an_update_marks_m_stale_adds_a_and_removes_d(corpus_checked_out):
     r = apply_source_update(c.path, "docs", c.first_sha, c.upstream_head, NOW)
     assert {k: r[k] for k in ("added", "modified", "removed")} == {"added": 1, "modified": 1, "removed": 1}
     assert r["removed_ids"] == ["docs:c.md"] and r["excluded"] == []
+    assert r["files_changed"] == 3 and r["stale_entries"] == ["docs:a.md", "docs:d.md"]   # the diff's lines; the ids marked stale, in its order
     assert yaml.safe_load((c.path / "graph.yaml").read_text())["concepts"]["concept"]["entries"] == ["docs:a.md"]
     config = yaml.safe_load((c.path / "config.yaml").read_text())
     assert config["sources"][0]["last_commit_sha"] == c.upstream_head

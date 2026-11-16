@@ -142,8 +142,9 @@ def apply_source_update(corpus: Path, source: str, old_sha: str, new_sha: str, n
     `render.strategy` is `tiered`. `D`: the entry goes from `index.yaml` and its id from the entry lists of `graph.yaml`.
     Then `meta` is set, and the source's `last_commit_sha` (`new_sha`) and `last_indexed_at`, and `index.last_updated_at`.
 
-    Returns `added`, `modified`, `removed` (counts), `removed_ids` and `excluded` (paths). A git failure raises `RuntimeError`
-    with git's message, and nothing is changed.
+    Returns `files_changed` (the diff's lines), `added`, `modified`, `removed` (counts), `removed_ids`, `stale_entries` (the
+    ids marked stale, in the diff's order) and `excluded` (paths). A git failure raises `RuntimeError` with git's message,
+    and nothing is changed.
     """
     corpus = Path(corpus)
     config_file, index_file, graph_file = corpus / "config.yaml", corpus / "index.yaml", corpus / "graph.yaml"
@@ -160,12 +161,14 @@ def apply_source_update(corpus: Path, source: str, old_sha: str, new_sha: str, n
     by_id = {e["id"]: e for e in load_index(index_file).get("entries") or []}
     stale: dict[str, dict] = {}
     added: list[dict] = []
+    marked: list[str] = []   # the ids made stale, in the order of the diff
     gone: set[str] = set()
     excluded: list[str] = []
     for status, path in changes:
         id = f"{source}:{path}"
         if status in ("M", "A") and id in by_id:
             stale[id] = {**by_id[id], "stale": True, "stale_since": now}
+            marked.append(id)
         elif status == "A" and any(part in skipped for part in PurePosixPath(path).parts[:-1]):
             excluded.append(path)
         elif status == "A" and id not in {e["id"] for e in added}:
@@ -173,6 +176,7 @@ def apply_source_update(corpus: Path, source: str, old_sha: str, new_sha: str, n
                 "id": id, "source": source, "path": path, "stale": True, "stale_since": now, "category": "unknown",
                 "summary": "Pending re-scan", "section": section, "tags": [], "keywords": [], "concepts": [],
             })
+            marked.append(id)
         elif status == "D" and id in by_id:
             gone.add(id)
 
@@ -191,7 +195,10 @@ def apply_source_update(corpus: Path, source: str, old_sha: str, new_sha: str, n
     if _block(lines, "index"):
         _set(lines, _block(lines, "index"), "last_updated_at", now)
     config_file.write_text("".join(lines))
-    return {"added": len(added), "modified": len(stale), "removed": len(removed), "removed_ids": removed, "excluded": excluded}
+    return {
+        "files_changed": len(changes), "added": len(added), "modified": len(stale), "removed": len(removed),
+        "removed_ids": removed, "stale_entries": marked, "excluded": excluded,
+    }
 
 
 # --- the merge of the scans, and the setters ----------------------------------------------------------------------------
