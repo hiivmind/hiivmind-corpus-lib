@@ -245,12 +245,6 @@ class Corpus:
         subprocess.run(["uv", "run", str(script), str(self.path / "index-embeddings.lance"), generated_at], check=True, capture_output=True)
         self._save("test: add embeddings")
 
-    def break_origin(self) -> None:
-        """Make origin refuse every push; fetching and pulling still work."""
-        hook = self.origin / "hooks" / "pre-receive"
-        hook.write_text("#!/bin/sh\necho 'push refused by the test' >&2\nexit 1\n")
-        hook.chmod(0o755)
-
     def set_gh_open_prs(self, prs: list[dict], branch: str | None = None) -> None:
         """Make `gh pr list` print `prs`, and give origin the branch those pull requests are from (four days old by default)."""
         self.gh_prs.write_text(json.dumps(prs))

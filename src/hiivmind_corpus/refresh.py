@@ -117,17 +117,18 @@ def _appended(text: str, new: list[dict]) -> str:
 # --- a source's update ------------------------------------------------------------------------------------------------
 
 def _diff(corpus: Path, source: str, docs_root: str, old_sha: str, new_sha: str) -> list[tuple[str, str]]:
-    """`(status, path under the docs root)` for each line of the clone's diff, in its order."""
-    command = ["git", "-C", str(corpus / ".source" / source), "diff", "--name-status", "--no-renames", f"{old_sha}..{new_sha}"]
+    """`(status, path under the docs root)` for each change of the clone's diff, in its order. `-z` gives each path as it is,
+    without the quoting git gives a name with other than plain ASCII."""
+    command = ["git", "-C", str(corpus / ".source" / source), "diff", "--name-status", "-z", "--no-renames", f"{old_sha}..{new_sha}"]
     if docs_root != ".":
         command += ["--", docs_root]
     done = subprocess.run(command, capture_output=True, text=True, stdin=subprocess.DEVNULL, timeout=TIMEOUT)
     if done.returncode:
         why = " ".join((done.stderr or done.stdout).split()) or "no message"
         raise RuntimeError(f"{' '.join(command)} exited {done.returncode}: {why}")
+    fields = done.stdout.split("\0")
     changes = []
-    for line in done.stdout.splitlines():
-        status, _, path = line.partition("\t")
+    for status, path in zip(fields[0::2], fields[1::2]):   # status, path, status, path ... then an empty field
         changes.append((status[:1], path if docs_root == "." else path.removeprefix(f"{docs_root}/")))
     return changes
 

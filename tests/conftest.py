@@ -1,7 +1,5 @@
 """The corpus fixtures of the package's tests. One test uses one corpus fixture: they all build in `tmp_path`."""
 
-from datetime import date
-
 import pytest
 
 from corpus_fixture import make_corpus
@@ -42,8 +40,3 @@ def corpus_many(monkeypatch, tmp_path):
     """62 entries in the index, all stale, and 61 files in the source (`c.md` is deleted there): three batches of at most 30."""
     return _make(monkeypatch, tmp_path, extra_files=59, stale=tuple(MANY), checkout=True)
 
-
-@pytest.fixture
-def today() -> str:
-    """Today's date as the branch names write it."""
-    return date.today().isoformat()

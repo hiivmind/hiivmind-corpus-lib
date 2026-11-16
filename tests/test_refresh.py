@@ -118,6 +118,23 @@ def test_the_config_diff_is_only_the_three_values(corpus_checked_out):
     ])
 
 
+def test_a_file_name_git_would_quote_is_read_as_it_is(corpus_checked_out):          # final review 3
+    c = corpus_checked_out
+    upstream = lambda *args: subprocess.run(["git", "-C", str(c.upstream), *args], capture_output=True, text=True, check=True).stdout.strip()
+    (c.upstream / "docs" / "é.md").write_text("# é\n")
+    upstream("add", "-A"); upstream("commit", "-q", "-m", "é")
+    base = upstream("rev-parse", "HEAD")
+    (c.upstream / "docs" / "é.md").write_text("# é, changed\n")
+    (c.upstream / "docs" / "ü.md").write_text("# ü\n")
+    upstream("add", "-A"); upstream("commit", "-q", "-m", "é changed, ü added")
+    head = upstream("rev-parse", "HEAD")
+    subprocess.run(["git", "-C", str(c.path / ".source" / "docs"), "pull", "-q"], check=True)
+    c.add_entry({"id": "docs:é.md", "source": "docs", "path": "é.md", "stale": False})
+    r = apply_source_update(c.path, "docs", base, head, NOW)
+    assert (r["modified"], r["added"], r["stale_entries"]) == (1, 1, ["docs:é.md", "docs:ü.md"])
+    assert c.entry("docs:ü.md")["path"] == "ü.md" and c.entry("docs:é.md")["stale"] is True
+
+
 def test_a_failed_diff_raises_with_what_git_said(corpus_checked_out):
     c = corpus_checked_out
     try:
