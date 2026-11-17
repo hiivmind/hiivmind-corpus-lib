@@ -7,6 +7,10 @@ The layout of one corpus fixture, under `tmp_path`:
     origin.git/    the bare remote of the corpus repository
     clone/         a clone of origin holding hiivmind-corpus-test/ (the corpus) beside hiivmind-corpus-other/; `corpus_second`
                    holds hiivmind-corpus-second/ instead, whose source `guide` has its documents under manual/
+
+A v1 corpus (`v1="bullets" | "tiered" | "table"`) has the v1 index of that layout (`V1_INDEXES`) instead of `index.yaml`,
+`graph.yaml`, `render-index.sh` and the rendered `index.md`; its checkout of the source, when asked for, is at `first_sha`,
+where a.md, b.md and c.md exist.
     bin/gh         the stand-in `gh`, first on PATH
 """
 
@@ -77,6 +81,37 @@ def _entry(source: str, name: str) -> dict:
     }
 
 
+V1_INDEXES = {   # each v1 layout: its files, as found in the corpora (flyio's bare GREP, atproto's dates, htmx's table)
+    "bullets": {
+        "index.md": (
+            "# Test Documentation Corpus\n\n> Two files.\n\n---\n\n## Basics\n\n"
+            "- **Alpha** `docs:a.md` - The file a.md, in v1.\n"
+            "- **Beta** (2023-06-08) `docs:b.md` ⚡ GREP - The file b.md, in v1.\n"
+        ),
+    },
+    "tiered": {
+        "index.md": (
+            "# Test Documentation Corpus\n\n---\n\n## Quick Reference\n\n### Start here\n"
+            "- **Alpha** `docs:a.md` - Alpha, in short.\n\n---\n\n"
+            "## The Guide\n*The guide to the test documents.*\n\n→ See [index-guide.md](index-guide.md)\n"
+        ),
+        "index-guide.md": (
+            "# Guide - Detailed Index\n\n> Back to [main index](index.md)\n\n---\n\n## Basics\n\n"
+            "- **Alpha** `docs:a.md` - The file a.md, in v1.\n"
+            "  Keywords: `alpha`\n"
+            "- **Beta** `docs:b.md` - The file b.md, in v1. ⚡ GREP - `grep -n \"^## \" FILE` ⏳ STALE\n"
+        ),
+    },
+    "table": {
+        "index.md": (
+            "# Test Documentation Index\n\n## Files\n\n| Topic | File | Description |\n|-------|------|-------------|\n"
+            "| `Alpha` | `a.md` | The file a.md, in v1. |\n| Beta | `b.md` | The file b.md, with `code` in v1. |\n\n"
+            "## Glossary\n\n| Term | Description | Spec |\n|------|-------------|------|\n| **PDS** | A server | `specs/account` |\n"
+        ),
+    },
+}
+
+
 def _render(entries: list[dict]) -> str:
     """`index.md` as `render-index.sh` writes it for these entries, which all have one category."""
     lines = ["# Test Documentation Index", "", f"> Sources: 1 | Entries: {len(entries)} | Generated: 2026-01-01T00:00:00Z",
@@ -93,7 +128,7 @@ class Corpus:
 
     def __init__(
         self, base: Path, *, at_root: bool, push: bool, extra_files: int, stale: tuple[str, ...], checkout: bool,
-        corpus_name: str = "test", source: str = "docs", docs_root: str = "docs",
+        corpus_name: str = "test", source: str = "docs", docs_root: str = "docs", v1: str | None = None,
     ):
         self.base = base
         self.upstream = _init(base / "upstream")
@@ -134,10 +169,15 @@ class Corpus:
         })
         (self.path / "graph.yaml").write_text(
             'schema_version: 2\n\nconcepts:\n  concept:\n    label: "Concept"\n    description: "The one concept of the test corpus"\n'
-            '    tags: ["test"]\n'
+            '    tags: ["test"]\n\nmeta:\n  generated_at: "2026-01-01T00:00:00Z"\n  concept_count: 1\n  relationship_count: 0\n'
         )
         shutil.copy(RENDER_INDEX, self.path / "render-index.sh")
         (self.path / "index.md").write_text(_render(entries))
+        if v1:
+            for name in ("index.yaml", "graph.yaml", "render-index.sh", "index.md"):
+                (self.path / name).unlink()
+            for name, text in V1_INDEXES[v1].items():
+                (self.path / name).write_text(text)
         if not at_root:
             other = self.clone / "hiivmind-corpus-other"
             other.mkdir()
@@ -161,6 +201,8 @@ class Corpus:
             source_clone = self.path / ".source" / source
             source_clone.parent.mkdir(parents=True, exist_ok=True)
             subprocess.run(["git", "clone", "-q", str(self.upstream), str(source_clone)], check=True)
+            if v1:
+                _git(source_clone, "checkout", "-q", self.first_sha)
         if stale:
             self.mark_stale(*stale)
 
