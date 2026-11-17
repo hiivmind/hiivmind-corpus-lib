@@ -8,7 +8,10 @@ import pytest
 
 import hiivmind_corpus.refresh as refresh
 from hiivmind_corpus.reference import reference
-from hiivmind_corpus.refresh import embeddings_lag, embeddings_status, refresh_needed, source_freshness, verify_previews
+from hiivmind_corpus.refresh import (
+    embeddings_lag, embeddings_status, index_is_v1, index_is_v2, refresh_needed, source_freshness, sources_handled, status_report,
+    verify_previews,
+)
 from hiivmind_corpus.run import SCRIPTS, run_script
 
 
@@ -88,3 +91,33 @@ def test_a_heading_inside_a_code_block_is_not_a_section():
 def test_run_script_runs_detect_from_the_package():
     done = run_script("detect.py")
     assert SCRIPTS.name == "scripts" and done.returncode == 0 and done.stdout.strip() in ("ready", "no-model", "not-installed")
+
+
+# --- the status report and the checks of the job sequences ----------------------------------------------------------------
+
+def test_status_report_needs_a_refresh_when_only_the_embeddings_lag(corpus):            # example 1a
+    corpus.set_last_sha(corpus.upstream_head)
+    corpus.make_lance((date.today() - timedelta(days=400)).isoformat() + "T00:00:00Z")   # before every entry's last_indexed
+    report = status_report(corpus.path)
+    assert report["stale_count"] == 0 and report["embeddings_lag"] == 3 and report["refresh_needed"] is True
+
+
+def test_status_report_of_a_current_corpus(corpus):
+    corpus.set_last_sha(corpus.upstream_head)
+    report = status_report(corpus.path)
+    assert report["refresh_needed"] is False and report["stale_count"] == 0 and report["index_format"] == "v2"
+    assert report["sources"] == [{"id": "docs", "type": "git", "freshness": "current"}] and report["status_errors"] == []
+
+
+def test_index_format_checks(corpus):
+    assert (index_is_v2(corpus.path), index_is_v1(corpus.path)) == (True, False)
+    (corpus.path / "index.yaml").unlink()
+    assert (index_is_v2(corpus.path), index_is_v1(corpus.path)) == (False, True)
+    (corpus.path / "index.md").unlink()
+    assert (index_is_v2(corpus.path), index_is_v1(corpus.path)) == (False, False)
+
+
+def test_sources_handled_is_false_with_a_web_source(corpus):
+    assert sources_handled(corpus.path) is True
+    corpus.add_source({"id": "site", "type": "web"})
+    assert sources_handled(corpus.path) is False

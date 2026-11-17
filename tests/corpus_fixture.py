@@ -134,7 +134,7 @@ class Corpus:
         })
         (self.path / "graph.yaml").write_text(
             'schema_version: 2\n\nconcepts:\n  concept:\n    label: "Concept"\n    description: "The one concept of the test corpus"\n'
-            '    tags: ["test"]\n'
+            '    tags: ["test"]\n\nmeta:\n  generated_at: "2026-01-01T00:00:00Z"\n  concept_count: 1\n  relationship_count: 0\n'
         )
         shutil.copy(RENDER_INDEX, self.path / "render-index.sh")
         (self.path / "index.md").write_text(_render(entries))

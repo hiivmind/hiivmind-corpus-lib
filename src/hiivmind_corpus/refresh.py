@@ -15,7 +15,7 @@ import yaml
 
 from hiivmind_corpus.index import _graph_without, _renderer, _split, _without, apply_scan, load_index, stale_files, write_entries
 from hiivmind_corpus.run import SCRIPTS, run_script
-from hiivmind_corpus.sources import kind_of
+from hiivmind_corpus.sources import SOURCE_KINDS, kind_of
 from hiivmind_corpus.status import _embeddings_generated_at, _when, corpus_status
 
 BATCH = 30   # files in one scan run
@@ -33,6 +33,22 @@ def corpus_ready(corpus: Path) -> bool:
     index_md = corpus / "index.md"
     placeholder = index_md.is_file() and PLACEHOLDER in index_md.read_text()
     return bool(config.get("sources")) and (corpus / "index.yaml").is_file() and not placeholder
+
+
+def index_is_v2(corpus: Path) -> bool:
+    """True when the corpus has `index.yaml`."""
+    return (Path(corpus) / "index.yaml").is_file()
+
+
+def index_is_v1(corpus: Path) -> bool:
+    """True when the corpus has no `index.yaml` and has an `index.md`."""
+    return not index_is_v2(corpus) and (Path(corpus) / "index.md").is_file()
+
+
+def sources_handled(corpus: Path) -> bool:
+    """True when the kind of each source of `config.yaml` is one the package handles (`SOURCE_KINDS`)."""
+    config = yaml.safe_load((Path(corpus) / "config.yaml").read_text()) or {}
+    return all(source.get("type") in SOURCE_KINDS for source in config.get("sources") or [])
 
 
 def stale_batches(corpus: Path) -> list[dict]:
@@ -262,6 +278,22 @@ def source_freshness(corpus: Path) -> list[dict]:
             freshness, error = kind.freshness(source, corpus)
         found.append({"id": source["id"], "type": source.get("type"), "freshness": freshness, "error": error})
     return found
+
+
+def status_report(corpus: Path) -> dict:
+    """`corpus_status`, with `refresh_needed` as the refresh's check means it: a source behind or unknown, a stale entry, or
+    embeddings that lag. Returns `sources` (`id`, `type`, `freshness`), `index_format`, `stale_count`, `embeddings_lag`,
+    `refresh_needed` and `status_errors`. Reads the corpus; fetches nothing. A corpus without `config.yaml` raises."""
+    status = corpus_status(corpus, SCRIPTS)
+    needed = (
+        any(s["freshness"] in ("behind", "unknown") for s in status["sources"])
+        or status["stale_entries"] > 0
+        or status["embeddings_lag"] not in (0, None)
+    )
+    return {
+        "sources": status["sources"], "index_format": status["index_format"], "stale_count": status["stale_entries"],
+        "embeddings_lag": status["embeddings_lag"], "refresh_needed": needed, "status_errors": status["errors"],
+    }
 
 
 def refresh_needed(corpus: Path) -> bool:
