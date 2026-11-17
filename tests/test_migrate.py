@@ -141,6 +141,13 @@ def test_a_table_path_outside_the_index_files_is_not_an_id(corpus_v1_bullets):  
     assert migrate_index(corpus_v1_bullets.path, NOW)["migrated"] == 2
 
 
+def test_a_table_path_in_an_index_file_the_parser_does_not_read_is_lost(corpus_v1_bullets):
+    corpus_v1_bullets.write("index.md", (corpus_v1_bullets.path / "index.md").read_text() + "\n| `c.md` | `b.md` | two paths |\n")
+    corpus_v1_bullets._save("test: a table row with two paths, which the parser does not read")
+    with pytest.raises(MigrationError, match=r"^ids lost in migration: docs:c\.md$"):
+        migrate_index(corpus_v1_bullets.path, NOW)
+
+
 def test_a_render_failure_restores_every_file(corpus_v1_tiered, monkeypatch, tmp_path):        # CJW-5, example 7c
     failing = tmp_path / "failing-render.sh"
     failing.write_text('#!/usr/bin/env bash\necho half > index.md\necho half > index-guide.md\necho "no yq here" >&2\nexit 1\n')

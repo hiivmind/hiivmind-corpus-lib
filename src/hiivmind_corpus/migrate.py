@@ -107,6 +107,17 @@ def _ids_in(text: str, source_ids: list[str], extensions: tuple[str, ...], *, ta
     return found
 
 
+def _sub_indexes(corpus: Path) -> list[Path]:
+    """The sub-index files, `index-<section>.md` at the corpus root: the names `render-index.sh`, the process that writes
+    the index files, gives them. The v1 corpora this migrates use the same names."""
+    return sorted(Path(corpus).glob("index-*.md"))
+
+
+def _index_files(corpus: Path) -> list[Path]:
+    """The index files as `render-index.sh` writes them: `index.md`, then each sub-index (`_sub_indexes`)."""
+    return [Path(corpus) / "index.md", *_sub_indexes(corpus)]
+
+
 def _markdown_files(corpus: Path) -> list[Path]:
     """Each `.md` file of the corpus, outside `.source/` and `.git/`."""
     return sorted(p for p in corpus.rglob("*.md") if p.is_file() and not {".source", ".git"} & set(p.relative_to(corpus).parts))
@@ -114,13 +125,11 @@ def _markdown_files(corpus: Path) -> list[Path]:
 
 def v1_ids(corpus: Path, source_ids: list[str], extensions: tuple[str, ...]) -> set[str]:
     """The ids in every `.md` file of the corpus outside `.source/`: the check `migrate_index` makes against its render. A
-    table cell counts only in the index files (`index.md`, `index-*.md`): elsewhere a table of paths lists the corpus's own
-    files (better-auth's and flyio's `CLAUDE.md`), and nothing an index entry could be."""
+    table cell counts only in the index files (`_index_files`): elsewhere a table of paths lists the corpus's own files
+    (better-auth's and flyio's `CLAUDE.md`), and nothing an index entry could be."""
     corpus = Path(corpus)
-    return set().union(*(
-        _ids_in(f.read_text(), source_ids, extensions, tables=f.parent == corpus and (f.name == "index.md" or f.name.startswith("index-")))
-        for f in _markdown_files(corpus)
-    ))
+    indexes = set(_index_files(corpus))
+    return set().union(*(_ids_in(f.read_text(), source_ids, extensions, tables=f in indexes) for f in _markdown_files(corpus)))
 
 
 def _extensions(config: dict) -> tuple[str, ...]:
@@ -160,7 +169,7 @@ def _sections(corpus: Path, main: str, subs: list[Path]) -> list[dict]:
 def _parse(corpus: Path, source_ids: list[str], extensions: tuple[str, ...]) -> tuple[list[dict], list[str], list[dict]]:
     """The entries of the v1 files (a duplicate id keeps its sub-index line), the Quick Reference ids, the sections."""
     main = (corpus / "index.md").read_text()
-    subs = sorted(corpus.glob("index-*.md"))
+    subs = _sub_indexes(corpus)
     sections = _sections(corpus, main, subs)
     files = [(corpus / "index.md", None)] + [(corpus / f"index-{s['id']}.md", s["id"]) for s in sections]
     found: dict[str, dict] = {}
@@ -214,13 +223,13 @@ def _config_text(text: str, render: dict, now: str) -> str:
 
 def _snapshot(corpus: Path) -> dict[Path, tuple[bytes, int] | None]:
     """Each file the migration writes or overwrites, as it is now: `(bytes, mode)`, or None when it does not exist."""
-    files = [corpus / name for name in ("index.yaml", "config.yaml", "render-index.sh", "index.md")] + sorted(corpus.glob("index-*.md"))
+    files = [corpus / name for name in ("index.yaml", "config.yaml", "render-index.sh")] + _index_files(corpus)
     return {f: (f.read_bytes(), f.stat().st_mode) if f.is_file() else None for f in files}
 
 
 def _restore(corpus: Path, snapshot: dict[Path, tuple[bytes, int] | None]) -> None:
     """Put back every file of `snapshot`, and remove each sub-index the render made."""
-    for f in corpus.glob("index-*.md"):
+    for f in _sub_indexes(corpus):
         if f not in snapshot:
             f.unlink()
     for f, kept in snapshot.items():
@@ -299,6 +308,6 @@ def _write_and_render(corpus: Path, index: dict, config_text: str, source_ids: l
     if done.returncode:
         raise MigrationError(f"render-index.sh failed: {done.stderr.strip() or done.stdout.strip() or f'exit {done.returncode}'}")
     rendered: set[str] = set()
-    for f in [corpus / "index.md", *sorted(corpus.glob("index-*.md"))]:
+    for f in _index_files(corpus):
         rendered |= _ids_in(f.read_text(), source_ids, extensions, tables=True)
     return rendered
