@@ -164,3 +164,10 @@ def test_a_failed_migration_restores_the_corpus_own_render_script(corpus_v1_bull
 def test_a_v2_corpus_is_refused(corpus):
     with pytest.raises(MigrationError, match="^index.yaml exists — nothing to migrate$"):
         migrate_index(corpus.path, NOW)
+
+
+def test_a_failure_before_the_render_runs_restores_every_file(corpus_v1_bullets, monkeypatch, tmp_path):   # final review 1
+    monkeypatch.setattr(migrate, "RENDER_TEMPLATE", tmp_path / "no-such-render-index.sh")   # the copy raises
+    with pytest.raises(FileNotFoundError):
+        migrate_index(corpus_v1_bullets.path, NOW)
+    assert corpus_v1_bullets.git("status", "--porcelain") == "" and not (corpus_v1_bullets.path / "index.yaml").exists()

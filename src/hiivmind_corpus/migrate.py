@@ -274,23 +274,31 @@ def migrate_index(corpus: Path, now: str) -> dict:
     index = {"meta": {"generated_at": now, "entry_count": len(entries)}, "entries": entries}
 
     snapshot = _snapshot(corpus)
-    (corpus / "index.yaml").write_text(yaml.safe_dump(index, sort_keys=False, allow_unicode=True))
-    (corpus / "config.yaml").write_text(_config_text(config_text, render, now))
-    shutil.copy(RENDER_TEMPLATE, corpus / "render-index.sh")
     try:
-        done = subprocess.run(["bash", "./render-index.sh", "index.yaml"], cwd=corpus, capture_output=True, text=True, timeout=TIMEOUT)
-    except subprocess.TimeoutExpired:
-        _restore(corpus, snapshot)
-        raise MigrationError(f"render-index.sh failed: no result after {TIMEOUT} seconds") from None
-    if done.returncode:
-        _restore(corpus, snapshot)
-        raise MigrationError(f"render-index.sh failed: {done.stderr.strip() or done.stdout.strip() or f'exit {done.returncode}'}")
-
-    rendered: set[str] = set()
-    for f in [corpus / "index.md", *sorted(corpus.glob("index-*.md"))]:
-        rendered |= _ids_in(f.read_text(), source_ids, extensions, tables=True)
+        rendered = _write_and_render(corpus, index, _config_text(config_text, render, now), source_ids, extensions)
+    except BaseException:
+        _restore(corpus, snapshot)   # nothing is left half applied, whatever went wrong (P18)
+        raise
     lost = sorted(original - rendered - {s["id"] for s in skipped})
     if lost:
         _restore(corpus, snapshot)
         raise MigrationError(_lost(lost))
     return {"migrated": len(entries), "migrate_skipped": skipped, "strategy": strategy, "sections": [s["id"] for s in sections]}
+
+
+def _write_and_render(corpus: Path, index: dict, config_text: str, source_ids: list[str], extensions: tuple[str, ...]) -> set[str]:
+    """Write `index.yaml` and `config.yaml`, copy the package's `render-index.sh` and render; the ids in the rendered files.
+    A render that fails or does not finish raises `MigrationError`."""
+    (corpus / "index.yaml").write_text(yaml.safe_dump(index, sort_keys=False, allow_unicode=True))
+    (corpus / "config.yaml").write_text(config_text)
+    shutil.copy(RENDER_TEMPLATE, corpus / "render-index.sh")
+    try:
+        done = subprocess.run(["bash", "./render-index.sh", "index.yaml"], cwd=corpus, capture_output=True, text=True, timeout=TIMEOUT)
+    except subprocess.TimeoutExpired:
+        raise MigrationError(f"render-index.sh failed: no result after {TIMEOUT} seconds") from None
+    if done.returncode:
+        raise MigrationError(f"render-index.sh failed: {done.stderr.strip() or done.stdout.strip() or f'exit {done.returncode}'}")
+    rendered: set[str] = set()
+    for f in [corpus / "index.md", *sorted(corpus.glob("index-*.md"))]:
+        rendered |= _ids_in(f.read_text(), source_ids, extensions, tables=True)
+    return rendered

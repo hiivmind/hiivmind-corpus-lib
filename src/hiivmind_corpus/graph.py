@@ -50,10 +50,16 @@ def validate_graph(corpus: Path) -> dict:
         for field in _RELATIONSHIP_FIELDS:
             if not rel.get(field):
                 issue("error", "schema", f"relationship {n} has no {field}")
+            elif not isinstance(rel[field], str):
+                issue("error", "schema", f"relationship {n}: {field} is not a string")
+    # the later rules read only the fields that are strings
+    relationships = [{k: v for k, v in rel.items() if isinstance(v, str)} for rel in relationships]
     meta = data.get("meta") if isinstance(data.get("meta"), dict) else {}
     for field in _META_FIELDS:
         if field not in meta:
             issue("error", "schema", f"meta has no {field}")
+        elif field == "generated_at" and not isinstance(meta[field], str):
+            issue("error", "schema", "meta.generated_at is not a string")
         elif field != "generated_at" and not isinstance(meta[field], int):
             issue("error", "schema", f"meta.{field} is not an integer")
 

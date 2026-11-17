@@ -95,3 +95,14 @@ def test_graph_exists(corpus):
     assert graph_exists(corpus.path) is True
     (corpus.path / "graph.yaml").unlink()
     assert graph_exists(corpus.path) is False
+
+
+def test_schema_needs_the_types_of_the_fields(corpus):                  # final review 3
+    graph(corpus, relationships=[{"from": ["concept"], "to": "other", "type": 123, "origin": "manual"}],
+          meta={**META, "generated_at": None})
+    result = found(corpus)
+    assert errors(result) == [
+        ("schema", "relationship 1: from is not a string"), ("schema", "relationship 1: type is not a string"),
+        ("schema", "meta.generated_at is not a string"),
+    ]
+    assert result["valid"] is False
