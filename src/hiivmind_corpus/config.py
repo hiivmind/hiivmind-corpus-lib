@@ -23,7 +23,7 @@ Extra = tuple[tuple[str, Any], ...]
 class CorpusInfo:
     name: str | None = None
     display_name: str | None = None
-    keywords: tuple[str, ...] = ()
+    keywords: tuple[str, ...] | None = None
     created_at: datetime | None = None
     extra: Extra = ()
 
@@ -37,15 +37,15 @@ class IndexInfo:
 
 @dataclass(frozen=True)
 class Settings:
-    include_patterns: tuple[str, ...] = ()
-    exclude_patterns: tuple[str, ...] = ()
+    include_patterns: tuple[str, ...] | None = None
+    exclude_patterns: tuple[str, ...] | None = None
     extra: Extra = ()
 
 
 @dataclass(frozen=True)
 class Build:
     organization: str | None = None
-    skip_sections: tuple[str, ...] = ()
+    skip_sections: tuple[str, ...] | None = None
     extra: Extra = ()
 
 
@@ -60,8 +60,8 @@ class RenderSection:
 @dataclass(frozen=True)
 class Render:
     strategy: str = "single"
-    sections: tuple[RenderSection, ...] = ()
-    quick_reference: tuple[str, ...] = ()
+    sections: tuple[RenderSection, ...] = field(default=(), metadata={"omit_default": True})
+    quick_reference: tuple[str, ...] = field(default=(), metadata={"omit_default": True})
     description: str | None = None
     extra: Extra = ()
 
@@ -108,13 +108,16 @@ def _source(raw: Any, n: int) -> Source | UnrecognisedSource:
     where = f"sources[{n}]"
     if not isinstance(raw, dict):
         raise InvalidFile(FILE, where, f"`{where}` must be a mapping, found {_found(raw)}")
-    kind = SOURCE_KINDS.get(raw.get("type"))
+    found_type = raw.get("type")
+    if found_type is not None and not isinstance(found_type, str):
+        raise InvalidFile(FILE, f"{where}.type",
+                          f"`{where}.type` must be a string, found {_found(found_type)}")
+    kind = SOURCE_KINDS.get(found_type)
     if kind is None:
         found_id = raw.get("id")
-        found_type = raw.get("type")
         return UnrecognisedSource(
             id=found_id if isinstance(found_id, str) else "",
-            type=found_type if isinstance(found_type, str) else None,
+            type=found_type,
             raw=dict(raw))
     return kind.parse(raw, where=where)
 

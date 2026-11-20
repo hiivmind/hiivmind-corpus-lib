@@ -91,3 +91,19 @@ def test_ready(tmp_path):
     d = corpus_dir(tmp_path / "4")
     (d / "index.md").write_text("# X\n\nRun hiivmind-corpus-build to create the index.\n")
     assert not Corpus.open(d).ready()
+
+
+def test_absent_collections_stay_absent_and_explicit_empty_is_kept():
+    absent = "corpus:\n  name: x\nsettings: {}\nbuild:\n  organization: flat\n"
+    assert Config.loads(absent).dumps() == absent
+    empty = ("corpus:\n  name: x\n  keywords: []\nsettings:\n  include_patterns: []\n"
+             "build:\n  skip_sections: []\n")
+    assert Config.loads(empty).dumps() == empty
+
+
+@pytest.mark.parametrize("bad", ["[git]", "{name: git}"])
+def test_a_non_string_source_type_is_invalid_file(bad):
+    with pytest.raises(InvalidFile) as e:
+        Config.loads(f"sources:\n  - id: a\n    type: {bad}\n")
+    assert e.value.file == "config.yaml"
+    assert e.value.where == "sources[0].type"
