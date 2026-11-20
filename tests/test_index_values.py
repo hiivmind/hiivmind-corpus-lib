@@ -120,3 +120,19 @@ def test_the_corpus_loads_its_index(tmp_path):
     index = open_corpus(tmp_path).index.load()
     assert [e.id for e in index.entries] == ["polars:a.md", "polars:b.md", "polars:c.md"]
     assert dataclasses.is_dataclass(index) and index.meta.entry_count == 3
+
+
+def test_size_is_its_classification():
+    index = Index.loads(golden("index/single.yaml"))
+    assert [e.size for e in index.entries] == ["standard", None, "large"]
+    with pytest.raises(InvalidFile) as e:
+        Index.loads(_entries(1, lambda i: ["    size: 1200"]))
+    assert e.value.where == "entries[0].size"
+
+
+def test_an_empty_entries_list_is_kept():
+    assert Index.loads("entries: []\n").dumps() == "entries: []\n"
+    assert Index().dumps() == "entries: []\n"
+    index = Index.loads(golden("index/single.yaml"))
+    emptied = dataclasses.replace(index, entries=())
+    assert emptied.dumps() == 'meta:\n  generated_at: "2026-11-20T09:00:00Z"\n  entry_count: 0\nentries: []\n'

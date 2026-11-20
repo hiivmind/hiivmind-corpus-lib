@@ -70,8 +70,8 @@ class GraphReport:
 @dataclass(frozen=True)
 class Graph:
     schema_version: int | None = None
-    concepts: dict[str, Concept] = field(default_factory=dict, metadata={"omit_default": True})
-    relationships: tuple[Relationship, ...] = field(default=(), metadata={"omit_default": True})
+    concepts: dict[str, Concept] | None = None
+    relationships: tuple[Relationship, ...] | None = None
     meta: GraphMeta | None = None
     extra: Extra = ()
 
@@ -87,10 +87,10 @@ class Graph:
 
     def without_entries(self, ids: set[str]) -> Graph:
         """Schema 1: the ids leave each concept's `entries` and `entry_count` follows. Else `self`."""
-        if self.schema_version != 1:
+        if self.schema_version != 1 or self.concepts is None:
             return self
         concepts = {}
-        for cid, concept in self.concepts.items():
+        for cid, concept in (self.concepts or {}).items():
             if concept.entries is not None:
                 kept = tuple(e for e in concept.entries if e not in ids)
                 if kept != concept.entries:
@@ -114,7 +114,7 @@ class GraphCapability:
         graph = self._load()
         index_file = self._corpus.path / INDEX_FILE
         entries = Index.loads(index_file.read_text(encoding="utf-8")).entries if index_file.is_file() else ()
-        concepts, relationships = graph.concepts, graph.relationships
+        concepts, relationships = graph.concepts or {}, graph.relationships or ()
         issues: list[Issue] = []
 
         def issue(severity: str, rule: str, detail: str) -> None:

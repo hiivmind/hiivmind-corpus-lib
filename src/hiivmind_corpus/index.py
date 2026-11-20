@@ -37,7 +37,7 @@ class Entry:
     concepts: tuple[str, ...] | None = None
     category: str | None = None
     content_type: str | None = None
-    size: int | None = None
+    size: str | None = None
     grep_hint: str | Null | None = field(default=None, metadata={"nullable": True})
     headings: tuple[Heading, ...] | None = None
     links_to: tuple[str, ...] | None = None
@@ -73,7 +73,7 @@ class IndexMeta:
 @dataclass(frozen=True)
 class Index:
     meta: IndexMeta | None = None
-    entries: tuple[Entry, ...] = field(default=(), metadata={"omit_default": True})
+    entries: tuple[Entry, ...] = ()
     extra: Extra = ()
 
     @classmethod

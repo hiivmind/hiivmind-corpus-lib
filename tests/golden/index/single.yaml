@@ -15,7 +15,7 @@ entries:
       - expressions
     category: guide
     content_type: markdown
-    size: 1200
+    size: standard
     grep_hint: null
     headings:
       - anchor: expressions
@@ -43,7 +43,7 @@ entries:
     summary: Everything about the API.
     category: reference
     content_type: markdown
-    size: 90000
+    size: large
     grep_hint: grep -n '^## ' big.md
     stale: false
     last_indexed: "2026-11-19T10:00:00Z"

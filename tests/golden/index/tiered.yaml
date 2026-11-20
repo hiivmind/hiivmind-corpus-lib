@@ -9,7 +9,7 @@ entries:
     summary: The guide.
     category: guide
     content_type: markdown
-    size: 30000
+    size: large
     stale: false
     last_indexed: "2026-11-20T09:00:00Z"
     section: guide

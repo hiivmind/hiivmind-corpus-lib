@@ -201,3 +201,24 @@ def test_remove_entries_without_a_graph_does_nothing(tmp_path):
     (corpus.path / "graph.yaml").unlink()
     corpus.graph.remove_entries(["polars:a.md"])
     assert not (corpus.path / "graph.yaml").exists()
+
+
+def test_empty_graph_collections_are_kept_and_absent_ones_stay_absent():
+    text = "schema_version: 2\nconcepts: {}\nrelationships: []\n"
+    graph = Graph.loads(text)
+    assert graph.concepts == {} and graph.relationships == () and graph.dumps() == text
+    bare = Graph.loads("schema_version: 2\n")
+    assert bare.concepts is None and bare.relationships is None and bare.dumps() == "schema_version: 2\n"
+
+
+def test_validate_treats_absent_collections_as_empty(tmp_path):
+    report = with_graph(tmp_path, "schema_version: 2\n").graph.validate()
+    assert (report.concepts, report.relationships) == (0, 0)
+
+
+def test_remove_entries_schema_1_keeps_an_empty_relationships_list(tmp_path):
+    text = golden("graph/schema-1.yaml").replace("relationships:\n  - from: basis\n    to: macros\n    type: includes\n    origin: tag\n", "relationships: []\n")
+    corpus = with_graph(tmp_path, text)
+    corpus.graph.remove_entries({"sas:a.md"})
+    out = (corpus.path / "graph.yaml").read_text()
+    assert "relationships: []\n" in out and "      - sas:a.md" not in out

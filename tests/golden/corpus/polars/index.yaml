@@ -15,7 +15,7 @@ entries:
       - expressions
     category: guide
     content_type: markdown
-    size: 1200
+    size: standard
     grep_hint: null
     headings:
       - anchor: expressions
@@ -42,7 +42,7 @@ entries:
       - expressions
     category: guide
     content_type: markdown
-    size: 1200
+    size: standard
     grep_hint: null
     headings:
       - anchor: lazy
@@ -69,7 +69,7 @@ entries:
       - expressions
     category: guide
     content_type: markdown
-    size: 1200
+    size: standard
     grep_hint: null
     headings:
       - anchor: io
