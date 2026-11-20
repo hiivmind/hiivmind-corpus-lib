@@ -161,3 +161,19 @@ def kind_of(source: Source | UnrecognisedSource) -> SourceKind | None:
     if isinstance(source, Source):
         return SOURCE_KINDS.get(source.type)
     return None
+
+
+def join_url(base: str, path: str) -> str:
+    """`base` and `path` joined by exactly one slash."""
+    return base.rstrip("/") + "/" + path.lstrip("/")
+
+
+def snapshot_freshness(observation: Observation | None, since: datetime | None) -> Freshness:
+    """Kinds that watch a listing: no observation `manual`; a `Snapshot` newer than `since` `behind`."""
+    if observation is None:
+        return Freshness.MANUAL
+    if not isinstance(observation, Snapshot):
+        return Freshness.UNKNOWN
+    if since is None or (observation.stamps and max(observation.stamps.values()) > since):
+        return Freshness.BEHIND
+    return Freshness.CURRENT
