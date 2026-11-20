@@ -1,31 +1,46 @@
-"""A git source: fresh when the upstream branch's head is the commit the corpus was indexed at."""
+"""The `git` kind: a repository cloned under `.source/<id>`."""
 
-import os
-import subprocess
-from pathlib import Path
+from collections.abc import Mapping
+from dataclasses import dataclass, replace
+from datetime import datetime
+from typing import Any
 
-TIMEOUT = 60   # seconds for `git ls-remote`
+from .. import schema
+from .types import CONFIG_FILE, Freshness, Head, Location, Observation, Source, normalise_docs_root
 
 
-class GitSource:
-    def freshness(self, source: dict, corpus: Path) -> tuple[str, str | None]:
-        """`git ls-remote <repo_url> refs/heads/<branch>` against `last_commit_sha`. Clones and changes nothing."""
-        repo_url, branch = source.get("repo_url"), source.get("branch", "main")
-        if not repo_url:
-            return "unknown", f"source `{source['id']}` has no repo_url"
-        # Never wait for a password: a pre-check that cannot ask anyone must fail instead.
-        env = {**os.environ, "GIT_TERMINAL_PROMPT": "0"}
-        try:
-            done = subprocess.run(
-                ["git", "ls-remote", str(repo_url), f"refs/heads/{branch}"], capture_output=True, text=True, env=env,
-                stdin=subprocess.DEVNULL, timeout=TIMEOUT,
-            )
-        except subprocess.TimeoutExpired:
-            return "unknown", f"source `{source['id']}`: git ls-remote {repo_url} did not finish in {TIMEOUT} s"
-        if done.returncode != 0:
-            why = " ".join(done.stderr.split()) or f"exit {done.returncode}"
-            return "unknown", f"source `{source['id']}`: git ls-remote {repo_url} failed: {why}"
-        lines = done.stdout.split()
-        if not lines:
-            return "unknown", f"source `{source['id']}`: {repo_url} has no branch `{branch}`"
-        return ("current" if lines[0] == source.get("last_commit_sha") else "behind"), None
+@dataclass(frozen=True)
+class GitSource(Source):
+    type = "git"
+    id: str
+    repo_url: str
+    branch: str | None = None
+    docs_root: str | None = None
+    last_commit_sha: str | None = None
+    last_indexed_at: datetime | None = None
+    extra: tuple[tuple[str, Any], ...] = ()
+
+
+class GitKind:
+    type = "git"
+
+    def parse(self, raw: Mapping, where: str = "source") -> GitSource:
+        return schema.read(GitSource, raw, CONFIG_FILE, where)
+
+    def dump(self, source: GitSource) -> dict:
+        return source.dump_mapping()
+
+    def locate(self, source: GitSource, corpus, rel_path: str) -> Location:
+        root = normalise_docs_root(source.docs_root)
+        base = corpus.path / ".source" / source.id
+        return Location(file=(base if root == "." else base / root) / rel_path)
+
+    def freshness(self, source: GitSource, observation: Observation | None, now: datetime) -> Freshness:
+        if not isinstance(observation, Head):
+            return Freshness.UNKNOWN
+        return Freshness.CURRENT if observation.sha == source.last_commit_sha else Freshness.BEHIND
+
+    def recorded(self, source: GitSource, observation: Observation | None, now: datetime) -> GitSource:
+        if isinstance(observation, Head):
+            return replace(source, last_commit_sha=observation.sha, last_indexed_at=now)
+        return replace(source, last_indexed_at=now)

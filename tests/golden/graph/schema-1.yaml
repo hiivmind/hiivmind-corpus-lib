@@ -1,0 +1,28 @@
+schema_version: 1
+concepts:
+  basis:
+    label: Basis
+    description: SAS procedures
+    tags:
+      - sas
+    entries:
+      - sas:a.md
+      - sas:b.md
+      - sas:c.md
+    entry_count: 3
+  macros:
+    label: Macros
+    description: The macro language
+    entries:
+      - sas:b.md
+    entry_count: 1
+    status: draft
+relationships:
+  - from: basis
+    to: macros
+    type: includes
+    origin: tag
+meta:
+  generated_at: "2026-11-19T10:00:00Z"
+  concept_count: 2
+  relationship_count: 1

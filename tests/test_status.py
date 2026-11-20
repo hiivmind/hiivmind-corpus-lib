@@ -1,151 +1,161 @@
-"""`corpus_status`: the freshness pre-check, and the seam for source kinds."""
+"""`corpus.status`: the freshness pre-check (spec 7.6, STA-1..5, CFG-2, CFG-3)."""
 
-import json
-from datetime import date, timedelta
-from pathlib import Path
+import os
+from dataclasses import replace
+from datetime import UTC, datetime
 
 import pytest
 
-import hiivmind_corpus
-from hiivmind_corpus.sources import SOURCE_KINDS, kind_of
-from hiivmind_corpus.sources.git import GitSource
-from hiivmind_corpus.status import corpus_status
+from hiivmind_corpus import embeddings as emb
+from hiivmind_corpus.sources.types import Freshness, Head, SourceStatus, Unobserved
+from hiivmind_corpus.status import IndexFormat, Status
+from hiivmind_corpus.store import save
+from support import open_corpus
 
-SCRIPTS = Path(hiivmind_corpus.__file__).parent / "scripts"
-
-
-def test_a_corpus_behind_its_upstream_needs_a_refresh(corpus):
-    s = corpus_status(corpus.path, SCRIPTS)
-    assert s["corpus"] == "test" and s["index_format"] == "v2"
-    assert s["sources"] == [{"id": "docs", "type": "git", "freshness": "behind"}] and s["refresh_needed"] is True
-    assert s["errors"] == []
+SHA = "5eaa000000000000000000000000000000000000"
+LANCE = "index-embeddings.lance"
 
 
-def test_an_up_to_date_corpus_does_not(corpus):
-    corpus.set_last_sha(corpus.upstream_head)
-    s = corpus_status(corpus.path, SCRIPTS)
-    assert s["sources"] == [{"id": "docs", "type": "git", "freshness": "current"}]
-    assert s["refresh_needed"] is False and s["stale_entries"] == 0 and s["embeddings_lag"] is None
+@pytest.fixture
+def corpus(tmp_path, monkeypatch):
+    monkeypatch.setattr(emb, "find_spec", lambda name: object())  # fastembed is not a dev dependency
+    return open_corpus(tmp_path)
 
 
-def test_stale_entries_alone_need_a_refresh(corpus_stale):
-    corpus_stale.set_last_sha(corpus_stale.upstream_head)
-    s = corpus_status(corpus_stale.path, SCRIPTS)
-    assert s["refresh_needed"] is True and s["stale_entries"] == 2
-    assert s["sources"][0]["freshness"] == "current"
+def _stale(corpus, n=1, tier=None):
+    index = corpus.index.load()
+    entries = tuple(replace(e, stale=True, tier=tier) if i < n else e for i, e in enumerate(index.entries))
+    save(corpus, index=replace(index, entries=entries))
 
 
-def test_an_unreachable_upstream_is_unknown_and_is_reported(corpus):
-    corpus.set_repo_url("/nowhere")
-    s = corpus_status(corpus.path, SCRIPTS)
-    assert s["sources"][0]["freshness"] == "unknown" and s["errors"] and s["refresh_needed"] is False
+def test_report_of_a_current_corpus(corpus):
+    assert corpus.status.report({"polars": Head(SHA)}) == Status(
+        corpus="Polars", index_format="v2", sources=(SourceStatus("polars", "git", "current", None),),
+        stale_entries=0, embeddings_lag=None, refresh_needed=False, errors=())
 
 
-def test_an_upstream_that_times_out_is_unknown_and_is_reported(corpus, tmp_path, monkeypatch):
-    import os, shutil, sys
-    import hiivmind_corpus.sources.git
-    slow = tmp_path / "slow-bin"
-    slow.mkdir()
-    (slow / "git").write_text(
-        f"#!{sys.executable}\nimport os, sys, time\nif 'ls-remote' in sys.argv:\n    time.sleep(30)\n"
-        f"os.execv('{shutil.which('git')}', ['git', *sys.argv[1:]])\n"
-    )
-    (slow / "git").chmod(0o755)
-    monkeypatch.setenv("PATH", f"{slow}{os.pathsep}{os.environ['PATH']}")
-    monkeypatch.setattr(hiivmind_corpus.sources.git, "TIMEOUT", 1)
-    s = corpus_status(corpus.path, SCRIPTS)
-    assert s["sources"][0]["freshness"] == "unknown" and any("did not finish in 1 s" in e for e in s["errors"])
+def test_a_behind_source_needs_a_refresh(corpus):
+    s = corpus.status.report({"polars": Head("b" * 40)})
+    assert s.sources[0].freshness == Freshness.BEHIND and s.refresh_needed is True and s.errors == ()
 
 
-def test_a_branch_the_upstream_does_not_have_is_unknown_and_is_reported(corpus):
-    corpus.add_source({"id": "other", "type": "git", "repo_url": str(corpus.upstream), "branch": "no-such-branch", "last_commit_sha": "x"})
-    s = corpus_status(corpus.path, SCRIPTS)
-    assert {"id": "other", "type": "git", "freshness": "unknown"} in s["sources"]
-    assert any("no-such-branch" in e for e in s["errors"])
+def test_a_missing_observation_is_unknown_and_reported_not_raised(corpus):
+    s = corpus.status.report({})
+    assert s.sources[0].freshness == "unknown"
+    assert s.errors == ("source `polars`: no observation of its upstream was handed in",)
+    assert s.refresh_needed is True
 
 
-def test_a_kind_this_instance_does_not_handle_is_reported(corpus):
-    corpus.add_source({"id": "site", "type": "web"})
-    s = corpus_status(corpus.path, SCRIPTS)
-    assert {"id": "site", "type": "web", "freshness": "unknown"} in s["sources"]
-    assert "source type `web` is not handled by this instance yet" in s["errors"]
+def test_a_failed_observation_is_unknown_with_its_reason(corpus):
+    s = corpus.status.report({"polars": Unobserved("timed out")})
+    assert s.errors == ("source `polars`: timed out",) and s.refresh_needed is True
 
 
-def test_nothing_is_changed(corpus):
-    corpus_status(corpus.path, SCRIPTS)
-    assert corpus.git("status", "--porcelain") == ""
-    assert not (corpus.path / ".source").exists()
+def test_a_stale_entry_alone_needs_a_refresh(corpus):
+    _stale(corpus)
+    s = corpus.status.report({"polars": Head(SHA)})
+    assert s.stale_entries == 1 and s.refresh_needed is True
 
 
-def test_the_seam_knows_git_only(corpus):
-    assert set(SOURCE_KINDS) == {"git"} and isinstance(SOURCE_KINDS["git"], GitSource)
-    assert kind_of({"id": "docs", "type": "git"}) is SOURCE_KINDS["git"]
-    assert kind_of({"id": "site", "type": "web"}) is None and kind_of({"id": "x"}) is None
+def test_stale_sections_are_counted(corpus):
+    _stale(corpus, 2, tier="section")
+    assert corpus.status.report({"polars": Head(SHA)}).stale_entries == 2
 
 
-def test_a_missing_config_names_the_file(corpus):
-    (corpus.path / "config.yaml").unlink()
-    with pytest.raises(FileNotFoundError, match="config.yaml"):
-        corpus_status(corpus.path, SCRIPTS)
+def test_a_manual_source_alone_does_not_need_a_refresh(tmp_path):
+    d = tmp_path / "manual"
+    d.mkdir()
+    (d / "config.yaml").write_text(
+        "schema_version: 2\ncorpus:\n  name: manual\nsources:\n  - id: self\n    type: self\n    docs_root: docs\n",
+        encoding="utf-8")
+    (d / "index.yaml").write_text("entries: []\n", encoding="utf-8")
+    from hiivmind_corpus import Corpus
+    s = Corpus.open(d).status.report({})
+    assert s.sources[0].freshness == Freshness.MANUAL
+    assert s.refresh_needed is False and s.errors == ()
 
 
-def test_the_index_format_is_read_from_the_files(corpus):
+def _lance(corpus, generated_at):
+    import lancedb
+    import pyarrow as pa
+
+    db = lancedb.connect(str(corpus.path / LANCE))
+    schema = pa.schema([pa.field("key", pa.string()), pa.field("value", pa.string())])
+    db.create_table(emb.META_TABLE, data=pa.Table.from_pylist(
+        [{"key": "generated_at", "value": generated_at}], schema=schema))
+
+
+def test_only_a_lance_lag_needs_a_refresh(corpus):
+    pytest.importorskip("lancedb")
+    _lance(corpus, "2026-11-19T09:00:00Z")  # entries were indexed at 10:00
+    s = corpus.status.report({"polars": Head(SHA)})
+    assert s.embeddings_lag == 3 and s.refresh_needed is True and s.errors == ()
+    assert corpus.status.embeddings_lag() == 3
+
+
+def test_a_lag_of_zero_does_not(corpus):
+    pytest.importorskip("lancedb")
+    _lance(corpus, "2026-11-19T10:00:00Z")
+    s = corpus.status.report({"polars": Head(SHA)})
+    assert s.embeddings_lag == 0 and s.refresh_needed is False
+
+
+def test_a_v1_corpus(corpus):
     (corpus.path / "index.yaml").unlink()
-    assert corpus_status(corpus.path, SCRIPTS)["index_format"] == "v1"
+    (corpus.path / "index.md").write_text("- [A](a.md) \u23f3 STALE\n", encoding="utf-8")
+    s = corpus.status.report({"polars": Head(SHA)})
+    assert corpus.status.index_format() == "v1" and s.index_format == "v1" and s.stale_entries is None
+
+
+def test_a_corpus_with_no_index_is_none_with_zero_stale(corpus):
+    (corpus.path / "index.yaml").unlink()
     (corpus.path / "index.md").unlink()
-    assert corpus_status(corpus.path, SCRIPTS)["index_format"] == "none"
+    s = corpus.status.report({"polars": Head(SHA)})
+    assert corpus.status.index_format() == IndexFormat.NONE and s.stale_entries == 0
 
 
-def test_a_v1_index_counts_its_stale_markers(corpus):
+def test_the_extra_missing_with_a_lance_directory_present(corpus, monkeypatch):
+    monkeypatch.setattr(emb, "find_spec", lambda name: None)
+    (corpus.path / LANCE).mkdir()
+    s = corpus.status.report({"polars": Head(SHA)})
+    assert s.embeddings_lag is None
+    assert s.errors[-1] == "embeddings lag not computed: install hiivmind-corpus-lib[embeddings]"
+    assert corpus.status.embeddings_lag() is None
+
+
+def test_embeddings_lag_and_index_format_asked_alone(corpus):
+    assert corpus.status.embeddings_lag() is None
+    assert corpus.status.index_format() == "v2"
+
+
+def test_report_fetches_nothing_and_changes_nothing(corpus):
+    def mtimes():
+        return {p: p.stat().st_mtime_ns for p in corpus.path.rglob("*")}
+
+    before = mtimes()
+    corpus.status.report({})
+    assert mtimes() == before
+
+
+def test_an_unrecognised_source_is_unknown_with_its_error(tmp_path):
+    d = tmp_path / "odd"
+    d.mkdir()
+    (d / "config.yaml").write_text(
+        "schema_version: 2\nsources:\n  - id: tickets\n    type: github\n    base: appXYZ\n", encoding="utf-8")
+    (d / "index.yaml").write_text("entries: []\n", encoding="utf-8")
+    from hiivmind_corpus import Corpus
+    s = Corpus.open(d).status.report({})
+    assert s.sources[0].freshness == "unknown" and s.sources[0].error in s.errors
+    assert s.refresh_needed is True
+
+
+@pytest.mark.parametrize("keep_page", [True, False])
+def test_lag_is_asked_only_of_a_v2_index(corpus, keep_page):
+    pytest.importorskip("lancedb")
+    _lance(corpus, "2026-11-19T09:00:00Z")
     (corpus.path / "index.yaml").unlink()
-    (corpus.path / "index.md").write_text("- [A](a.md) \u23f3 STALE\n- [B](b.md)\n- [C](c.md) \u23f3 STALE\n")
-    (corpus.path / "index-extra.md").write_text("- [D](d.md) \u23f3 STALE\n")
-    assert corpus_status(corpus.path, SCRIPTS)["stale_entries"] == 3
-
-
-# --- the embedding lag ------------------------------------------------------------------------------------------------
-
-def _fake_scripts(tmp_path, stdout: str, exit_code: int = 0) -> Path:
-    """A scripts directory whose `lance_meta.py` prints `stdout` and exits `exit_code`."""
-    scripts = tmp_path / "fake-scripts"
-    scripts.mkdir(parents=True)
-    (scripts / "lance_meta.py").write_text(
-        f"import sys\nprint({stdout!r})\nprint('stand-in failed', file=sys.stderr)\nsys.exit({exit_code})\n"
-    )
-    return scripts
-
-
-def test_the_lag_counts_entries_indexed_after_the_embeddings(corpus, tmp_path, monkeypatch):
-    stamp = lambda days: (date.today() + timedelta(days=days)).isoformat() + "T00:00:00Z"
-    scripts = _fake_scripts(tmp_path, json.dumps({"generated_at": stamp(-3)}))
-    (corpus.path / "index-embeddings.lance").mkdir()
-    monkeypatch.chdir(tmp_path)   # the lookup does not depend on the working directory
-    assert corpus_status(corpus.path, scripts)["embeddings_lag"] == 0
-    for name, days in (("new1.md", -2), ("new2.md", 0), ("old.md", -4)):
-        entry = {"id": f"docs:{name}", "source": "docs", "path": name, "stale": False, "last_indexed": stamp(days)}
-        corpus.add_entry(entry)
-    assert corpus_status(corpus.path, scripts)["embeddings_lag"] == 2
-
-
-def test_no_meta_table_means_no_lag_figure(corpus, tmp_path, monkeypatch):
-    scripts = _fake_scripts(tmp_path, "", exit_code=2)
-    (corpus.path / "index-embeddings.lance").mkdir()
-    assert corpus_status(corpus.path, scripts)["embeddings_lag"] is None
-
-
-def test_any_other_failure_of_lance_meta_raises_naming_the_script(corpus, tmp_path, monkeypatch):
-    scripts = _fake_scripts(tmp_path, "", exit_code=1)
-    (corpus.path / "index-embeddings.lance").mkdir()
-    with pytest.raises(RuntimeError, match="lance_meta.py"):
-        corpus_status(corpus.path, scripts)
-
-
-def test_the_real_script_gives_none_for_an_empty_lance_directory(corpus):
-    (corpus.path / "index-embeddings.lance").mkdir()
-    assert corpus_status(corpus.path, SCRIPTS)["embeddings_lag"] is None
-
-
-def test_the_real_script_failing_on_an_unreadable_directory_raises(corpus):
-    corpus.break_lance_dir()
-    with pytest.raises(RuntimeError, match="lance_meta.py"):
-        corpus_status(corpus.path, SCRIPTS)
+    if not keep_page:
+        (corpus.path / "index.md").unlink()
+    s = corpus.status.report({"polars": Head(SHA)})
+    assert s.embeddings_lag is None and s.errors == ()
+    assert corpus.status.embeddings_lag() is None

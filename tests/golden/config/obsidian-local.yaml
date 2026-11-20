@@ -1,0 +1,15 @@
+schema_version: 2
+corpus:
+  name: vault
+  display_name: Vault
+  created_at: "2026-11-01T08:00:00Z"
+sources:
+  - id: vault
+    type: obsidian
+    vault_path: /home/me/vault
+    include_patterns:
+      - '**/*.md'
+    last_indexed_at: "2026-11-19T10:00:00Z"
+    extraction:
+      wikilinks: true
+    owner: me

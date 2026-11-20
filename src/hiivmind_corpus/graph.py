@@ -1,96 +1,177 @@
-"""`validate_graph`: the six validation rules of `graph.md` over `graph.yaml` and `index.yaml`, as code. Reads; changes nothing."""
+"""`graph.yaml`: concepts, the relationships between them, and the six validation rules."""
 
-from pathlib import Path
+from __future__ import annotations
 
-import yaml
+from collections.abc import Iterable
+from dataclasses import dataclass, field, replace
+from datetime import datetime
+from typing import TYPE_CHECKING, Any
 
+from . import schema
+from .errors import InvalidFile
+from .files import write_set
+from .index import Index
+from .schema import _found
+from .yamlio import dump_yaml, load_yaml
+
+if TYPE_CHECKING:
+    from .corpus import Corpus
+
+FILE = "graph.yaml"
+INDEX_FILE = "index.yaml"
 RELATIONSHIP_TYPES = ("includes", "depends-on", "see-also", "extends", "contrast-with")
 ORIGINS = ("wikilink", "tag", "frontmatter", "manual")
-_RELATIONSHIP_FIELDS = ("from", "to", "type", "origin")
-_META_FIELDS = ("generated_at", "concept_count", "relationship_count")
+Extra = tuple[tuple[str, Any], ...]
 
 
-def graph_exists(corpus: Path) -> bool:
-    """True when the corpus has `graph.yaml`."""
-    return (Path(corpus) / "graph.yaml").is_file()
+@dataclass(frozen=True)
+class Concept:
+    label: str | None = None
+    description: str | None = None
+    tags: tuple[str, ...] | None = None
+    entries: tuple[str, ...] | None = None
+    entry_count: int | None = None
+    extra: Extra = ()
 
 
-def validate_graph(corpus: Path) -> dict:
-    """Check `graph.yaml` against `graph.md`'s rules. Returns `concepts` and `relationships` (counts), `issues`
-    (`{"severity", "rule", "detail"}`, in the order of the rules) and `valid` (no issue is an error).
+@dataclass(frozen=True)
+class Relationship:
+    from_: str | None = field(default=None, metadata={"key": "from"})
+    to: str | None = None
+    type: str | None = None
+    origin: str | None = None
+    evidence: str | None = None
+    extra: Extra = ()
 
-    Errors: `schema`, `dangling-concept`, `dangling-relationship`. Warnings: `orphan-concept`, and `relationship-type` and
-    `origin` for a value outside `graph.md`'s vocabulary (the corpora use others; the graph is still consistent)."""
-    corpus = Path(corpus)
-    data = yaml.safe_load((corpus / "graph.yaml").read_text()) or {}
-    index_file = corpus / "index.yaml"
-    entries = ((yaml.safe_load(index_file.read_text()) or {}).get("entries") or []) if index_file.is_file() else []
-    concepts = data.get("concepts") or {}
-    relationships = data.get("relationships") or []
-    issues: list[dict] = []
 
-    def issue(severity: str, rule: str, detail: str) -> None:
-        issues.append({"severity": severity, "rule": rule, "detail": detail})
+@dataclass(frozen=True)
+class GraphMeta:
+    generated_at: datetime | None = None
+    concept_count: int | None = None
+    relationship_count: int | None = None
+    extra: Extra = ()
 
-    # 1. schema
-    if data.get("schema_version") != 2:
-        issue("error", "schema", f"schema_version is {data.get('schema_version')!r}, not 2")
-    if not isinstance(concepts, dict):
-        issue("error", "schema", "concepts is not a mapping")
+
+@dataclass(frozen=True)
+class Issue:
+    severity: str
+    rule: str
+    detail: str
+
+
+@dataclass(frozen=True)
+class GraphReport:
+    concepts: int
+    relationships: int
+    issues: tuple[Issue, ...]
+    valid: bool
+
+
+@dataclass(frozen=True)
+class Graph:
+    schema_version: int | None = None
+    concepts: dict[str, Concept] | None = None
+    relationships: tuple[Relationship, ...] | None = None
+    meta: GraphMeta | None = None
+    extra: Extra = ()
+
+    @classmethod
+    def loads(cls, text: str) -> Graph:
+        data = load_yaml(text, FILE)
+        if not isinstance(data, dict):
+            raise InvalidFile(FILE, "", f"the file must be a mapping, found {_found(data)}")
+        return schema.read(cls, data, FILE)
+
+    def dumps(self) -> str:
+        return dump_yaml(schema.mapping(self))
+
+    def without_entries(self, ids: set[str]) -> Graph:
+        """Schema 1: the ids leave each concept's `entries` and `entry_count` follows. Else `self`."""
+        if self.schema_version != 1 or self.concepts is None:
+            return self
         concepts = {}
-    for cid, concept in concepts.items():
-        for field in ("label", "description"):
-            if not isinstance(concept, dict) or not isinstance(concept.get(field), str):
-                issue("error", "schema", f"concept `{cid}` has no {field}")
-    if not isinstance(relationships, list):
-        issue("error", "schema", "relationships is not a list")
-        relationships = []
-    relationships = [r if isinstance(r, dict) else {} for r in relationships]
-    for n, rel in enumerate(relationships, 1):
-        for field in _RELATIONSHIP_FIELDS:
-            if not rel.get(field):
-                issue("error", "schema", f"relationship {n} has no {field}")
-            elif not isinstance(rel[field], str):
-                issue("error", "schema", f"relationship {n}: {field} is not a string")
-    # the later rules read only the fields that are strings
-    relationships = [{k: v for k, v in rel.items() if isinstance(v, str)} for rel in relationships]
-    meta = data.get("meta") if isinstance(data.get("meta"), dict) else {}
-    for field in _META_FIELDS:
-        if field not in meta:
-            issue("error", "schema", f"meta has no {field}")
-        elif field == "generated_at" and not isinstance(meta[field], str):
-            issue("error", "schema", "meta.generated_at is not a string")
-        elif field != "generated_at" and not isinstance(meta[field], int):
-            issue("error", "schema", f"meta.{field} is not an integer")
+        for cid, concept in (self.concepts or {}).items():
+            if concept.entries is not None:
+                kept = tuple(e for e in concept.entries if e not in ids)
+                if kept != concept.entries:
+                    count = len(kept) if concept.entry_count is not None else None
+                    concept = replace(concept, entries=kept, entry_count=count)
+            concepts[cid] = concept
+        return replace(self, concepts=concepts)
 
-    # 2. dangling concept references
-    named: set[str] = set()
-    for entry in entries:
-        for cid in entry.get("concepts") or []:
-            named.add(cid)
-            if cid not in concepts:
-                issue("error", "dangling-concept", f"entry {entry.get('id')} names concept `{cid}`, which graph.yaml lacks")
 
-    # 3. dangling relationships
-    for n, rel in enumerate(relationships, 1):
-        for end, verb in (("from", "comes from"), ("to", "goes to")):
-            if rel.get(end) and rel[end] not in concepts:
-                issue("error", "dangling-relationship", f"relationship {n} {verb} `{rel[end]}`, which is not a concept")
+class GraphCapability:
+    def __init__(self, corpus: Corpus):
+        self._corpus = corpus
 
-    # 4. orphan concepts
-    for cid in concepts:
-        if cid not in named:
-            issue("warning", "orphan-concept", f"concept `{cid}` is named by no entry")
+    def exists(self) -> bool:
+        return (self._corpus.path / FILE).is_file()
 
-    # 5 and 6. the vocabularies
-    for n, rel in enumerate(relationships, 1):
-        if rel.get("type") and rel["type"] not in RELATIONSHIP_TYPES:
-            issue("warning", "relationship-type", f"relationship {n} uses `{rel['type']}`")
-    for n, rel in enumerate(relationships, 1):
-        if rel.get("origin") and rel["origin"] not in ORIGINS:
-            issue("warning", "origin", f"relationship {n} has origin `{rel['origin']}`")
+    def _load(self) -> Graph:
+        return Graph.loads((self._corpus.path / FILE).read_text(encoding="utf-8"))
 
-    return {
-        "concepts": len(concepts), "relationships": len(relationships), "issues": issues,
-        "valid": not any(i["severity"] == "error" for i in issues),
-    }
+    def validate(self) -> GraphReport:
+        graph = self._load()
+        index_file = self._corpus.path / INDEX_FILE
+        entries = Index.loads(index_file.read_text(encoding="utf-8")).entries if index_file.is_file() else ()
+        concepts, relationships = graph.concepts or {}, graph.relationships or ()
+        issues: list[Issue] = []
+
+        def issue(severity: str, rule: str, detail: str) -> None:
+            issues.append(Issue(severity, rule, detail))
+
+        # 1. schema
+        if graph.schema_version != 2:
+            issue("error", "schema", f"schema_version is {graph.schema_version!r}, not 2")
+        for cid, concept in concepts.items():
+            for name in ("label", "description"):
+                if getattr(concept, name) is None:
+                    issue("error", "schema", f"concept `{cid}` has no {name}")
+        for n, rel in enumerate(relationships, 1):
+            for name, value in (("from", rel.from_), ("to", rel.to), ("type", rel.type), ("origin", rel.origin)):
+                if not value:
+                    issue("error", "schema", f"relationship {n} has no {name}")
+        meta = graph.meta or GraphMeta()
+        for name in ("generated_at", "concept_count", "relationship_count"):
+            if getattr(meta, name) is None:
+                issue("error", "schema", f"meta has no {name}")
+
+        # 2. dangling concept references
+        named: set[str] = set()
+        for entry in entries:
+            for cid in entry.concepts or ():
+                named.add(cid)
+                if cid not in concepts:
+                    issue("error", "dangling-concept",
+                          f"entry {entry.id} names concept `{cid}`, which graph.yaml lacks")
+
+        # 3. dangling relationships
+        for n, rel in enumerate(relationships, 1):
+            for end, verb in ((rel.from_, "comes from"), (rel.to, "goes to")):
+                if end and end not in concepts:
+                    issue("error", "dangling-relationship", f"relationship {n} {verb} `{end}`, which is not a concept")
+
+        # 4. orphan concepts
+        for cid in concepts:
+            if cid not in named:
+                issue("warning", "orphan-concept", f"concept `{cid}` is named by no entry")
+
+        # 5 and 6. the vocabularies
+        for n, rel in enumerate(relationships, 1):
+            if rel.type and rel.type not in RELATIONSHIP_TYPES:
+                issue("warning", "relationship-type", f"relationship {n} uses `{rel.type}`")
+        for n, rel in enumerate(relationships, 1):
+            if rel.origin and rel.origin not in ORIGINS:
+                issue("warning", "origin", f"relationship {n} has origin `{rel.origin}`")
+
+        return GraphReport(len(concepts), len(relationships), tuple(issues),
+                           not any(i.severity == "error" for i in issues))
+
+    def remove_entries(self, ids: Iterable[str]) -> None:
+        if not self.exists():
+            return
+        graph = self._load()
+        updated = graph.without_entries(set(ids))
+        if updated == graph:
+            return
+        write_set(self._corpus.path, {FILE: updated.dumps()})

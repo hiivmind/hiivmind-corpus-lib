@@ -1,0 +1,49 @@
+meta:
+  generated_at: "2026-11-20T09:00:00Z"
+  entry_count: 3
+entries:
+  - id: polars:a.md
+    source: polars
+    path: a.md
+    title: Expressions
+    summary: Expressions in Polars.
+    tags:
+      - expressions
+    keywords:
+      - expressions
+    concepts:
+      - expressions
+    category: guide
+    content_type: markdown
+    size: standard
+    grep_hint: null
+    headings:
+      - anchor: expressions
+        title: Expressions
+    links_to:
+      - polars:b.md
+    frontmatter:
+      title: Expressions
+    stale: false
+    stale_since: null
+    last_indexed: "2026-11-20T09:00:00Z"
+  - id: polars:b.md
+    source: polars
+    path: b.md
+    summary: Pending re-scan
+    tags: []
+    keywords: []
+    concepts: []
+    stale: true
+    stale_since: "2026-11-19T10:00:00Z"
+  - id: polars:big.md
+    source: polars
+    path: big.md
+    title: The big page
+    summary: Everything about the API.
+    category: reference
+    content_type: markdown
+    size: large
+    grep_hint: grep -n '^## ' big.md
+    stale: false
+    last_indexed: "2026-11-19T10:00:00Z"

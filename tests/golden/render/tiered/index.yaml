@@ -1,0 +1,54 @@
+meta:
+  generated_at: "2026-11-20T09:00:00Z"
+  entry_count: 5
+entries:
+  - id: docs:guide.md
+    source: docs
+    path: guide.md
+    title: Guide
+    summary: The guide.
+    category: guide
+    content_type: markdown
+    size: large
+    grep_hint: grep -n "^## " guide.md
+    stale: false
+    section: guide
+  - id: docs:install.md
+    source: docs
+    path: install.md
+    title: Install
+    summary: How to install.
+    category: guide
+    content_type: markdown
+    size: standard
+    stale: true
+    section: guide
+  - id: docs:api.md
+    source: docs
+    path: api.md
+    title: Api
+    summary: The API.
+    category: reference
+    content_type: markdown
+    size: standard
+    stale: false
+    section: api
+  - id: docs:overview.md
+    source: docs
+    path: overview.md
+    title: Overview
+    summary: Where to start.
+    category: intro
+    content_type: markdown
+    size: standard
+    stale: false
+  - id: docs:legacy.md
+    source: docs
+    path: legacy.md
+    title: Legacy
+    summary: Kept for now.
+    category: reference
+    content_type: markdown
+    size: standard
+    stale: false
+    section: old

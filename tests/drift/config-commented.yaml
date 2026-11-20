@@ -1,0 +1,13 @@
+# A hand-edited config
+schema_version: 2
+lib_ref: v1.2   # unknown top-level key
+corpus:
+  name: demo
+  owner: someone   # unknown key
+sources:
+  # the repo
+  - id: tickets
+    type: github
+    repo: acme/tickets
+settings:
+  include_patterns: ['**/*.md']

@@ -1,0 +1,18 @@
+meta:
+  generated_at: "2026-11-19T10:00:00Z"
+  entry_count: 1
+  corpus: polars
+  source: polars
+entries:
+  - id: polars:a.md
+    source: polars
+    path: a.md
+    owner: nathaniel
+    headings:
+      - anchor: a
+        title: A
+        level: 1
+stats:
+  files: 1
+  by_kind:
+    markdown: 1

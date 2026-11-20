@@ -1,0 +1,12 @@
+schema_version: 2
+corpus:
+  name: hiivmind-corpus-lib
+  display_name: Corpus
+  created_at: "2026-11-01T08:00:00Z"
+sources:
+  - id: self
+    type: self
+    docs_root: docs
+    last_commit_sha: 5eaa000000000000000000000000000000000000
+    last_indexed_at: "2026-11-19T10:00:00Z"
+    note: this repository
