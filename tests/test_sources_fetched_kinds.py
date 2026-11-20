@@ -158,3 +158,13 @@ def test_llms_recorded():
     assert s.manifest.last_hash == "h1"
     o = LLMS.recorded(s, Unobserved("x"), FIXED)
     assert o.manifest.last_hash == "h1" and o.last_indexed_at == FIXED
+
+
+def test_web_recorded_fetch_time_only_for_snapshot_or_no_observation():
+    s = WEB.parse(CACHED)
+    before = s.last_fetched_at
+    for obs in (None, Snapshot({"a": LATE})):
+        assert WEB.recorded(s, obs, FIXED).last_fetched_at == FIXED
+    for obs in (Head("x"), ManifestHash("x"), Unobserved("x")):
+        r = WEB.recorded(s, obs, FIXED)
+        assert r.last_fetched_at == before and r.last_indexed_at == FIXED

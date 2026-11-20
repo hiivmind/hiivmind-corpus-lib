@@ -69,4 +69,6 @@ class WebKind:
         return Freshness.BEHIND if now - oldest > STALE_AFTER else Freshness.CURRENT
 
     def recorded(self, source: WebSource, observation: Observation | None, now: datetime) -> WebSource:
-        return replace(source, last_indexed_at=now, last_fetched_at=now)
+        if observation is None or isinstance(observation, Snapshot):
+            return replace(source, last_indexed_at=now, last_fetched_at=now)
+        return replace(source, last_indexed_at=now)
