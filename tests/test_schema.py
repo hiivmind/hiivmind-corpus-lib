@@ -186,3 +186,20 @@ def test_load_yaml_of_empty_text_is_an_empty_mapping_and_a_syntax_error_is_inval
     with pytest.raises(InvalidFile) as e:
         load_yaml("a: [1, 2\nb: }", "config.yaml")
     assert e.value.file == "config.yaml" and e.value.where == ""
+
+
+@pytest.mark.parametrize("text, where", [
+    ("from: a\nby_name:\n  123: {limit: 1}\n", "by_name"),
+    ("meta:\n  1: x\n", "meta"),
+])
+def test_a_non_string_mapping_key_is_rejected_with_its_place(text, where):
+    cls = Edge if text.startswith("from") else Box
+    with pytest.raises(InvalidFile) as e:
+        load(text, cls)
+    assert e.value.where == where
+
+
+def test_an_unquoted_invalid_date_is_invalid_file_with_its_place():
+    with pytest.raises(InvalidFile) as e:
+        load("when: 2026-02-30\n")
+    assert e.value.file == "index.yaml" and e.value.where == "when"

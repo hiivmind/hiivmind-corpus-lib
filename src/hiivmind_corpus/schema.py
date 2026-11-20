@@ -137,6 +137,9 @@ def _convert(tp: Any, value: Any, file: str, where: str) -> Any:
         _, vt = typing.get_args(tp)
         if not isinstance(value, dict):
             raise InvalidFile(file, where, f"`{where}` must be a mapping, found {_found(value)}")
+        for k in value:
+            if not isinstance(k, str):
+                raise InvalidFile(file, where, f"`{where}` keys must be strings, found {_found(k)} key {k!r}")
         if vt is Any:
             return dict(value)
         return {k: _convert(vt, v, file, _join(where, str(k))) for k, v in value.items()}

@@ -26,9 +26,18 @@ _Dumper.add_representer(type(None), lambda d, v: d.represent_scalar("tag:yaml.or
 _Dumper.add_representer(datetime, _represent_stamp)
 
 
+class _Loader(yaml.SafeLoader):
+    """Timestamps stay strings: `schema.parse_timestamp` reads them, with their place."""
+
+
+_Loader.yaml_implicit_resolvers = {
+    ch: [(tag, rx) for tag, rx in rs if tag != "tag:yaml.org,2002:timestamp"]
+    for ch, rs in yaml.SafeLoader.yaml_implicit_resolvers.items()}
+
+
 def load_yaml(text: str, file: str) -> object:
     try:
-        data = yaml.safe_load(text)
+        data = yaml.load(text, Loader=_Loader)
     except yaml.YAMLError as e:
         raise InvalidFile(file, "", f"not valid YAML: {e}") from e
     return {} if data is None else data
