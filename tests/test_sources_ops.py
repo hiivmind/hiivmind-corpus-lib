@@ -343,3 +343,20 @@ def test_a_section_listed_before_its_file_does_not_hide_the_file_from_an_update(
     assert entries(corpus)["polars:a.md"].stale is True
 
 
+def test_merging_a_parent_makes_its_sections_current_and_the_corpus_needs_no_refresh(tmp_path):
+    from support import write_tree
+
+    corpus = open_corpus(tmp_path)
+    config = corpus.config.load()
+    put_config(corpus, sources=(replace(config.sources[0], id="docs"),))
+    tiered(corpus)
+    write_tree(corpus.path / ".source/docs/docs/source", {"g.md": "# G\n"})
+    corpus.sources.apply_update("docs", changes(("M", "g.md")), Head(RIGHT))
+    scan = {"path": "g.md", "title": "G", "summary": "s", "tags": [], "keywords": [], "category": "guide"}
+    assert corpus.index.merge_scans([{"entries": [scan]}], []).enriched == ("docs:g.md",)
+    found = entries(corpus)
+    assert (found["docs:g.md#s1"].stale, found["docs:g.md#s1"].stale_since) == (False, NULL)
+    assert found["docs:g.md#s2"].stale is False
+    assert found["docs:g.md#s1"].summary == "kept"
+    report = corpus.status.report({"docs": Head(RIGHT)})
+    assert report.stale_entries == 0 and report.refresh_needed is False

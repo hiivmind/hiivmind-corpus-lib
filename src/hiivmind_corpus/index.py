@@ -257,5 +257,9 @@ class IndexCapability:
                         grep_hint=meta.grep_hint if meta.grep_hint is not None else NULL, headings=meta.headings,
                         stale=False, stale_since=NULL, last_indexed=now)
         if done:
-            self._save(replace(index, entries=tuple(done.get(e.id, e) for e in index.entries)))
+            current = tuple(
+                done.get(e.id, replace(e, stale=False, stale_since=NULL)
+                         if e.tier == "section" and e.parent in done else e)
+                for e in index.entries)
+            self._save(replace(index, entries=current))
         return MergeResult(enriched=tuple(done), skipped=tuple(skipped))
