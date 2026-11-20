@@ -299,3 +299,24 @@ def test_a_local_source_still_compares_paths(tmp_path):
 def test_drop_missing_of_an_unknown_source_raises(corpus):
     with pytest.raises(NoSuchSource, match="config.yaml has no source `nope`"):
         corpus.sources.drop_missing("nope", listing("a.md"))
+
+
+# --- tracking-only updates and the index's meta ------------------------------------------------------------------------
+
+@pytest.mark.parametrize("change", [Changes(), changes(("A", "drafts/e.md"))])
+def test_a_tracking_only_update_leaves_an_index_with_meta_byte_identical(corpus, change):
+    put_config(corpus, build=Build(skip_sections=("drafts",)))
+    before = snapshot(corpus)
+    corpus.sources.apply_update("polars", change, Head(NEW))
+    after = snapshot(corpus)
+    assert after["index.yaml"] == before["index.yaml"] and after["config.yaml"] != before["config.yaml"]
+
+
+@pytest.mark.parametrize("change", [Changes(), changes(("A", "drafts/e.md"))])
+def test_a_tracking_only_update_gives_a_meta_less_index_its_meta(corpus, change):
+    put_config(corpus, build=Build(skip_sections=("drafts",)))
+    put_index(corpus, [fresh("polars:keep.md")], meta=None)
+    corpus.sources.apply_update("polars", change, Head(NEW))
+    meta = corpus.index.load().meta
+    assert (meta.generated_at, meta.entry_count) == (FIXED, 1)
+    assert "Generated: 2026-11-20T09:00:00Z" in corpus.path.joinpath("index.md").read_text()

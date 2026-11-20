@@ -113,6 +113,8 @@ class SourcesCapability:
         if after != before:
             now = self._corpus.now()
             index = replace(after, meta=replace(after.meta or IndexMeta(), generated_at=now))
+        elif after.meta is None:
+            index = replace(after, meta=IndexMeta(generated_at=self._corpus.now()))
         if config is not None or index is not None or graph is not None:
             store.save(self._corpus, config=config, index=index, graph=graph)
 
