@@ -41,7 +41,11 @@ class Corpus:
 
     @property
     def name(self) -> str:
-        info = self.config.load().corpus
+        return self.name_in(self.config.load())
+
+    def name_in(self, config) -> str:
+        """The corpus's name as `config` gives it, else the directory's."""
+        info = config.corpus
         return (info.display_name or info.name if info else None) or self.path.name
 
     def now(self) -> datetime:
