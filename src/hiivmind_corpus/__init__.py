@@ -9,6 +9,8 @@ from .index import Entry, Heading, Index
 from .previews import Preview
 from .render import RenderResult
 from .schema import NULL
+from .sources.types import SourceStatus
+from .status import IndexFormat, Status
 
-__all__ = ["Config", "Corpus", "CorpusError", "EmbeddingsState", "EmbedResult", "Entry", "ExtraMissing", "Graph", "GraphReport", "Heading", "Index", "InvalidFile", "Issue",
-           "NoModel", "NotACorpus", "NULL", "Preview", "RenderResult"]
+__all__ = ["Config", "Corpus", "CorpusError", "EmbeddingsState", "EmbedResult", "Entry", "ExtraMissing", "Graph", "GraphReport", "Heading", "Index", "IndexFormat", "InvalidFile", "Issue",
+           "NoModel", "NotACorpus", "NULL", "Preview", "RenderResult", "SourceStatus", "Status"]

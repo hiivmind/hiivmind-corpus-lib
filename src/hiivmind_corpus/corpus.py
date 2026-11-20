@@ -16,6 +16,7 @@ from .index import IndexCapability
 from .previews import PreviewsCapability
 from .render import RenderCapability
 from .sources import SourcesCapability
+from .status import StatusCapability
 
 PLACEHOLDER = "Run hiivmind-corpus-build"
 
@@ -36,6 +37,7 @@ class Corpus:
         self.sources = SourcesCapability(self)
         self.previews = PreviewsCapability(self)
         self.embeddings = EmbeddingsCapability(self)
+        self.status = StatusCapability(self)
 
     @classmethod
     def open(cls, path: str | PathLike, *, clock: Callable[[], datetime] | None = None,
