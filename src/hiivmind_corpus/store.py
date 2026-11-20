@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
+from dataclasses import replace
 from typing import TYPE_CHECKING
 
 from . import config as config_module
@@ -11,7 +12,7 @@ from . import index as index_module
 from .config import Config
 from .files import write_set
 from .graph import Graph
-from .index import Index
+from .index import Index, IndexMeta
 from .render import PREFIX, SUFFIX, render_texts, stale_sub_indexes
 
 if TYPE_CHECKING:
@@ -28,6 +29,8 @@ def save(corpus: Corpus, *, config: Config | None = None, index: Index | None = 
     if config is not None:
         texts[config_module.FILE] = config.dumps()
     if index is not None:
+        if index.meta is None:
+            index = replace(index, meta=IndexMeta())
         texts[index_module.FILE] = index.dumps()
     if graph is not None:
         texts[graph_module.FILE] = graph.dumps()

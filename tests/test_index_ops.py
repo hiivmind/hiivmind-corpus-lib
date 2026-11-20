@@ -283,3 +283,12 @@ def test_save_writes_a_removal_and_a_graph(tmp_path):
 
     changed = store.save(corpus, graph=Graph.loads(graph), removes=("extra.txt",))
     assert changed == ("extra.txt",) and not (corpus.path / "extra.txt").exists()
+
+
+def test_save_gives_a_meta_less_index_its_meta(tmp_path):
+    corpus = open_corpus(tmp_path)
+    entries = corpus.index.load().entries
+    store.save(corpus, index=Index(entries=entries))
+    meta = corpus.index.load().meta
+    assert meta is not None and meta.entry_count == len(entries) and meta.generated_at is None
+    assert "Generated: unknown" in (corpus.path / "index.md").read_text(encoding="utf-8")
