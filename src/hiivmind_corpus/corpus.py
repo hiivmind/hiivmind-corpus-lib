@@ -9,6 +9,7 @@ from os import PathLike
 from pathlib import Path
 
 from .config import FILE, ConfigCapability
+from .embeddings import EmbeddingsCapability
 from .errors import NotACorpus
 from .graph import GraphCapability
 from .index import IndexCapability
@@ -34,6 +35,7 @@ class Corpus:
         self.render = RenderCapability(self)
         self.sources = SourcesCapability(self)
         self.previews = PreviewsCapability(self)
+        self.embeddings = EmbeddingsCapability(self)
 
     @classmethod
     def open(cls, path: str | PathLike, *, clock: Callable[[], datetime] | None = None,
