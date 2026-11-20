@@ -13,6 +13,7 @@ from .embeddings import EmbeddingsCapability
 from .errors import NotACorpus
 from .graph import GraphCapability
 from .index import IndexCapability
+from .migration import MigrationCapability
 from .previews import PreviewsCapability
 from .render import RenderCapability
 from .sources import SourcesCapability
@@ -38,6 +39,7 @@ class Corpus:
         self.previews = PreviewsCapability(self)
         self.embeddings = EmbeddingsCapability(self)
         self.status = StatusCapability(self)
+        self.migration = MigrationCapability(self)
 
     @classmethod
     def open(cls, path: str | PathLike, *, clock: Callable[[], datetime] | None = None,

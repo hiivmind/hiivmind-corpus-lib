@@ -1,0 +1,46 @@
+meta:
+  generated_at: "2026-11-20T09:00:00Z"
+  entry_count: 2
+entries:
+  - id: docs:a.md
+    source: docs
+    path: a.md
+    title: Alpha
+    summary: The file a.md, in v1.
+    tags:
+      - basics
+    keywords: []
+    concepts: []
+    category: unknown
+    content_type: markdown
+    size: standard
+    grep_hint: null
+    headings: []
+    links_to: []
+    links_from: []
+    frontmatter: {}
+    stale: true
+    stale_since: "2026-11-20T09:00:00Z"
+    last_indexed: null
+    section: guide
+  - id: docs:b.md
+    source: docs
+    path: b.md
+    title: Beta
+    summary: The file b.md, in v1.
+    tags:
+      - basics
+    keywords: []
+    concepts: []
+    category: unknown
+    content_type: markdown
+    size: standard
+    grep_hint: grep -n "^## " FILE
+    headings: []
+    links_to: []
+    links_from: []
+    frontmatter: {}
+    stale: true
+    stale_since: "2026-11-20T09:00:00Z"
+    last_indexed: null
+    section: guide

@@ -1,0 +1,30 @@
+schema_version: 2
+corpus:
+  name: test
+  display_name: Test
+  keywords:
+    - test
+  created_at: "2026-01-01T00:00:00Z"
+sources:
+  - id: docs
+    type: git
+    repo_url: https://example.invalid/docs.git
+    branch: main
+    last_commit_sha: 5eaa000000000000000000000000000000000000
+    last_indexed_at: "2026-01-01T00:00:00Z"
+index:
+  format: markdown
+  last_updated_at: "2026-11-20T09:00:00Z"
+settings:
+  include_patterns:
+    - '**/*.md'
+  exclude_patterns:
+    - '**/_*.md'
+render:
+  strategy: tiered
+  sections:
+    - id: guide
+      title: Guide
+      description: The guide to the test documents.
+  quick_reference:
+    - docs:a.md
