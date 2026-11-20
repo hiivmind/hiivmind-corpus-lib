@@ -48,10 +48,11 @@ def test_the_package_runs_no_command():
 def test_the_package_has_no_script_files():
     found = [str(p.relative_to(PACKAGE)) for p in PACKAGE.rglob("*") if p.is_dir() and p.name in ("scripts", "templates", "documents")]
     found += [str(p.relative_to(PACKAGE)) for p in PACKAGE.rglob("__main__.py")]
-    for p in PACKAGE.rglob("*.py"):
-        text = p.read_text()
-        if text.startswith("#!") or "# /// script" in text:
-            found.append(str(p.relative_to(PACKAGE)))
+    for p in PACKAGE.rglob("*"):
+        if p.is_file() and "__pycache__" not in p.relative_to(PACKAGE).parts:
+            data = p.read_bytes()
+            if data.startswith(b"#!") or b"# /// script" in data:
+                found.append(str(p.relative_to(PACKAGE)))
     if "[project.scripts]" in (ROOT / "pyproject.toml").read_text():
         found.append("pyproject.toml: [project.scripts]")
     assert found == []
