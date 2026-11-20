@@ -72,6 +72,11 @@ class IndexMeta:
     extra: Extra = ()
 
 
+def duplicate_id(entry_id: str, n: int, also: int) -> InvalidFile:
+    """E3: entries[n] repeats the id of entries[also]."""
+    return InvalidFile(FILE, f"entries[{n}].id", f"duplicate id `{entry_id}` (also entries[{also}])")
+
+
 @dataclass(frozen=True)
 class Index:
     meta: IndexMeta | None = None
@@ -87,8 +92,7 @@ class Index:
         seen: dict[str, int] = {}
         for n, entry in enumerate(index.entries):
             if entry.id in seen:
-                raise InvalidFile(FILE, f"entries[{n}].id",
-                                  f"duplicate id `{entry.id}` (also entries[{seen[entry.id]}])")
+                raise duplicate_id(entry.id, n, seen[entry.id])
             seen[entry.id] = n
         return index
 

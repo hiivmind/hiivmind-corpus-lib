@@ -8,7 +8,7 @@ from datetime import datetime
 from typing import TYPE_CHECKING
 
 from ..errors import NoSuchSource
-from ..index import Entry, Index, IndexMeta
+from ..index import Entry, Index, IndexMeta, duplicate_id
 from .types import (
     SOURCE_KINDS,
     Changes,
@@ -151,6 +151,9 @@ class SourcesCapability:
                     excluded.append(change.path)
                     continue
                 entry_id = f"{source_id}:{change.path}"
+                held = next((n for n, e in enumerate(entries) if e.id == entry_id), None)
+                if held is not None:
+                    raise duplicate_id(entry_id, len(entries), held)
                 entries.append(Entry(
                     id=entry_id, source=source_id, path=change.path, stale=True, stale_since=now,
                     category="unknown", summary=PENDING, section=source_id if by_section else None,

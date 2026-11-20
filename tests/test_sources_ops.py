@@ -320,3 +320,19 @@ def test_a_tracking_only_update_gives_a_meta_less_index_its_meta(corpus, change)
     meta = corpus.index.load().meta
     assert (meta.generated_at, meta.entry_count) == (FIXED, 1)
     assert "Generated: 2026-11-20T09:00:00Z" in corpus.path.joinpath("index.md").read_text()
+
+
+# --- final-review fixes ----------------------------------------------------------------------------------------------
+
+def test_an_added_path_whose_id_an_entry_already_holds_is_refused_before_any_write(corpus):
+    from hiivmind_corpus.errors import InvalidFile
+
+    put_index(corpus, [fresh("polars:new.md", path="a.md")])
+    before = snapshot(corpus)
+    with pytest.raises(InvalidFile) as error:
+        corpus.sources.apply_update("polars", changes(("A", "new.md")), Head(NEW))
+    assert error.value.file == "index.yaml" and error.value.where == "entries[1].id"
+    assert "duplicate id `polars:new.md` (also entries[0])" in str(error.value)
+    assert snapshot(corpus) == before
+
+
