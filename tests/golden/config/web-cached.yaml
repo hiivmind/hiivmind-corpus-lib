@@ -1,0 +1,21 @@
+schema_version: 2
+corpus:
+  name: fastmail-dev
+  display_name: Fastmail
+  created_at: "2026-11-01T08:00:00Z"
+sources:
+  - id: fastmail-dev
+    type: web
+    cache_dir: .cache/web/fastmail-dev
+    urls:
+      - url: https://jmap.io/crash-course.html
+        cached_file: crash-course.md
+        fetched_at: "2026-11-10T08:00:00Z"
+        content_hash: abc123
+      - url: https://jmap.io/spec.html
+        cached_file: spec.md
+        fetched_at: "2026-11-12T08:00:00Z"
+        content_hash: def456
+    last_fetched_at: "2026-11-12T08:00:00Z"
+    last_indexed_at: "2026-11-12T09:00:00Z"
+    content_hash: 0a0a0a

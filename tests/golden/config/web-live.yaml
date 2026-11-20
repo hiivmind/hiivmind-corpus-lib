@@ -1,0 +1,18 @@
+schema_version: 2
+corpus:
+  name: airtable
+  display_name: Airtable
+  created_at: "2026-11-01T08:00:00Z"
+sources:
+  - id: airtable
+    type: web
+    fetch_mode: live
+    base_url: https://airtable.com/developers/web/api/
+    discovered_urls:
+      - introduction
+      - rate-limits
+    pages:
+      - path: introduction
+        title: Introduction
+    last_indexed_at: "2026-11-12T09:00:00Z"
+    endpoints: 12

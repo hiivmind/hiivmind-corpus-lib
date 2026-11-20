@@ -1,0 +1,26 @@
+schema_version: 2
+corpus:
+  name: llms
+  display_name: Llms
+  created_at: "2026-11-01T08:00:00Z"
+sources:
+  - id: llms
+    type: llms-txt
+    manifest:
+      url: https://docs.example/llms.txt
+      last_hash: h1
+      last_fetched_at: "2026-11-19T10:00:00Z"
+    urls:
+      base_url: https://docs.example/
+      suffix: .md
+    cache:
+      enabled: true
+      dir: .cache/llms
+      strategy: full
+      sections:
+        - guide
+    structure:
+      guide:
+        - a
+    last_indexed_at: "2026-11-19T10:00:00Z"
+    generator: example

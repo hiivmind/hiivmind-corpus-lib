@@ -1,0 +1,15 @@
+schema_version: 2
+corpus:
+  name: notes
+  display_name: Notes
+  created_at: "2026-11-01T08:00:00Z"
+sources:
+  - id: notes
+    type: local
+    path: uploads/notes/
+    files:
+      - a.md
+      - b.md
+    description: Uploaded notes
+    last_indexed_at: "2026-11-19T10:00:00Z"
+    owner: me
