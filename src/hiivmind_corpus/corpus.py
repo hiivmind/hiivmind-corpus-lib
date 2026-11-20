@@ -13,6 +13,7 @@ from .errors import NotACorpus
 from .graph import GraphCapability
 from .index import IndexCapability
 from .render import RenderCapability
+from .sources import SourcesCapability
 
 PLACEHOLDER = "Run hiivmind-corpus-build"
 
@@ -30,6 +31,7 @@ class Corpus:
         self.index = IndexCapability(self)
         self.graph = GraphCapability(self)
         self.render = RenderCapability(self)
+        self.sources = SourcesCapability(self)
 
     @classmethod
     def open(cls, path: str | PathLike, *, clock: Callable[[], datetime] | None = None,

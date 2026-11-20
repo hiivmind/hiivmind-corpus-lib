@@ -2,6 +2,7 @@
 
 from typing import TYPE_CHECKING
 
+from .capability import DropResult, SourcesCapability, UpdateResult
 from .generated_docs import GeneratedDocsKind, GeneratedDocsSource
 from .git import GitKind, GitSource
 from .llms_txt import LlmsTxtKind, LlmsTxtSource
@@ -51,7 +52,7 @@ SOURCE_KINDS["web"] = WebKind()
 SOURCE_KINDS["llms-txt"] = LlmsTxtKind()
 
 __all__ = [
-    "SOURCE_KINDS", "Change", "Changes", "Freshness", "GeneratedDocsKind", "GeneratedDocsSource", "GitKind", "GitSource", "Head", "Listing", "LlmsTxtKind", "LlmsTxtSource", "LocalKind", "LocalSource", "Location",
+    "SOURCE_KINDS", "DropResult", "SourcesCapability", "UpdateResult", "Change", "Changes", "Freshness", "GeneratedDocsKind", "GeneratedDocsSource", "GitKind", "GitSource", "Head", "Listing", "LlmsTxtKind", "LlmsTxtSource", "LocalKind", "LocalSource", "Location",
     "ManifestHash", "ObsidianKind", "ObsidianSource", "Observation", "SelfKind", "SelfSource", "Snapshot", "Source", "SourceKind", "SourceStatus", "Unobserved", "WebKind", "WebSource",
     "UnrecognisedSource", "kind_of", "locate_entry", "normalise_docs_root", "parse_name_status",
 ]
