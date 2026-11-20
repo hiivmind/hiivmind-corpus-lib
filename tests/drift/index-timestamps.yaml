@@ -1,0 +1,17 @@
+entries:
+  - id: polars:a.md
+    source: polars
+    last_indexed: 2026-11-19T10:00:00Z
+    stale_since: 2026-11-18
+  - id: polars:b.md
+    source: polars
+    last_indexed: "2026-11-19T20:00:00+10:00"
+    stale_since: "2026-11-18"
+  - id: polars:c.md
+    source: polars
+    last_indexed: "2026-11-19T10:00:00.123456+00:00"
+    stale_since: null
+  - id: polars:d.md
+    source: polars
+    last_indexed: null
+    stale_since: 2026-11-18 10:00:00

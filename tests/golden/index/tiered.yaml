@@ -1,0 +1,35 @@
+meta:
+  generated_at: "2026-11-20T09:00:00Z"
+  entry_count: 3
+entries:
+  - id: docs:guide.md
+    source: docs
+    path: guide.md
+    title: Guide
+    summary: The guide.
+    category: guide
+    content_type: markdown
+    size: 30000
+    stale: false
+    last_indexed: "2026-11-20T09:00:00Z"
+    section: guide
+  - id: docs:guide.md#install
+    source: docs
+    title: Install
+    summary: How to install.
+    stale: false
+    section: guide
+    tier: section
+    parent: docs:guide.md
+    anchor: install
+    heading_level: 2
+    line_range:
+      - 10
+      - 42
+  - id: docs:other.md
+    source: docs
+    path: other.md
+    title: Other
+    summary: Another file.
+    stale: false
+    section: reference
