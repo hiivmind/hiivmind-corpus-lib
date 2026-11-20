@@ -1,0 +1,31 @@
+meta:
+  generated_at: "2026-11-20T09:00:00Z"
+  entry_count: 3
+entries:
+  - id: docs:query.md
+    source: docs
+    path: query.md
+    title: Query Guide
+    summary: Writing queries.
+    category: api reference
+    content_type: markdown
+    size: large
+    grep_hint: grep -n "^## " query.md
+    stale: false
+  - id: docs:old.md
+    source: docs
+    path: old.md
+    title: Old Notes
+    summary: Notes from before.
+    category: api reference
+    content_type: markdown
+    size: standard
+    stale: true
+  - id: docs:misc.md
+    source: docs
+    path: misc.md
+    title: Misc
+    summary: Odds and ends.
+    content_type: markdown
+    size: standard
+    stale: false
