@@ -12,6 +12,7 @@ from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from datetime import datetime
 from enum import StrEnum
+from importlib.util import find_spec
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -86,22 +87,22 @@ class EmbeddingsCapability:
     def _dir(self) -> Path:
         return self._corpus.path / LANCE_DIR
 
-    def _require(self, *, model: bool):
+    def _require(self, *, fastembed: bool = True):
+        """The three libraries of the extra; `fastembed` is only looked for, never imported (it loads onnxruntime)."""
         try:
             import lancedb
             import pyarrow
-
-            if model:
-                import fastembed  # noqa: F401
         except ImportError as exc:
             raise ExtraMissing(f"the embeddings extra is not installed: {EXTRA_HINT}") from exc
+        if fastembed and find_spec("fastembed") is None:
+            raise ExtraMissing(f"the embeddings extra is not installed: {EXTRA_HINT}")
         return lancedb, pyarrow
 
     def status(self) -> EmbeddingsState:
         if not self._dir.is_dir():
             return EmbeddingsState.ABSENT
         try:
-            self._require(model=False)
+            self._require()
         except ExtraMissing:
             return EmbeddingsState.NOT_INSTALLED
         return EmbeddingsState.READY if _model_cached() else EmbeddingsState.NO_MODEL
@@ -110,9 +111,9 @@ class EmbeddingsCapability:
         """Entries indexed after the table was generated; `None` when there is no table or no `_meta`."""
         if not self._dir.is_dir():
             return None
-        lancedb, _ = self._require(model=False)
+        lancedb, _ = self._require()
         db = lancedb.connect(str(self._dir))
-        if not META_TABLE in db.list_tables().tables:
+        if META_TABLE not in db.list_tables().tables:
             return None
         arrow = db.open_table(META_TABLE).to_arrow()
         meta = dict(zip(arrow.column("key").to_pylist(), arrow.column("value").to_pylist(), strict=True))
@@ -124,7 +125,7 @@ class EmbeddingsCapability:
                    if isinstance(e.last_indexed, datetime) and e.last_indexed > when)
 
     def embed(self, embedder: Embedder | None = None) -> EmbedResult:
-        lancedb, pa = self._require(model=embedder is None)
+        lancedb, pa = self._require(fastembed=embedder is None)
         if embedder is None:
             if not _model_cached():
                 raise NoModel(f"the model {MODEL_NAME} is not in the fastembed cache {_cache_dir()}; nothing was downloaded")
@@ -139,20 +140,22 @@ class EmbeddingsCapability:
             text = _text_of(entry)
             rows[entry.id] = (entry, text.strip(), hashlib.sha256((PASSAGE_PREFIX + text).strip().encode("utf-8")).hexdigest())
 
-        existing: dict[str, str] = {}
+        existing: dict[str, str | None] = {}
         table = None
+        rebuild = False
         if TABLE_NAME in db.list_tables().tables:
             table = db.open_table(TABLE_NAME)
-            if HASH_COLUMN in [f.name for f in table.schema]:
-                arrow = table.to_arrow().select(["id", HASH_COLUMN])
-                existing = dict(zip(arrow.column("id").to_pylist(), arrow.column(HASH_COLUMN).to_pylist(), strict=True))
-            else:
-                table = None  # the old table: rebuilt once, every entry embedded (D11, EMB-6)
+            rebuild = HASH_COLUMN not in [f.name for f in table.schema]  # the old table: rebuilt once (D11, EMB-6)
+            columns = ["id"] if rebuild else ["id", HASH_COLUMN]
+            arrow = table.to_arrow().select(columns)
+            ids = arrow.column("id").to_pylist()
+            existing = dict(zip(ids, [None] * len(ids) if rebuild else arrow.column(HASH_COLUMN).to_pylist(), strict=True))
         todo = [r for r in rows.values() if existing.get(r[0].id) != r[2]]
         gone = [i for i in existing if i not in rows]
 
-        if todo:
-            vectors = embedder([(PASSAGE_PREFIX + r[1]).strip() for r in todo])
+        schema = None
+        if todo or rebuild:
+            vectors = embedder([(PASSAGE_PREFIX + r[1]).strip() for r in todo]) if todo else []
             now = stamp(self._corpus.now())
             schema = pa.schema([pa.field("id", pa.string()), pa.field("source", pa.string()), pa.field("title", pa.string()),
                                 pa.field("tags", pa.list_(pa.string())), pa.field("concepts", pa.list_(pa.string())),
@@ -164,11 +167,11 @@ class EmbeddingsCapability:
                         "updated_at": now, HASH_COLUMN: digest}
                        for (e, text, digest), vector in zip(todo, vectors, strict=True)]
             data = pa.Table.from_pylist(records, schema=schema)
-            if table is None:
+            if rebuild or table is None:
                 table = db.create_table(TABLE_NAME, data=data, mode="overwrite")
             else:
                 table.merge_insert("id").when_matched_update_all().when_not_matched_insert_all().execute(data)
-        if gone and table is not None:
+        if gone and not rebuild and table is not None:
             table.delete(f"id IN ({', '.join(_sql_quote(i) for i in gone)})")
 
         if table is not None:

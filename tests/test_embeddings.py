@@ -2,7 +2,6 @@
 
 import subprocess
 import sys
-import types
 from dataclasses import replace
 from datetime import UTC, datetime
 
@@ -10,6 +9,7 @@ import pytest
 
 pytest.importorskip("lancedb")
 
+from hiivmind_corpus import embeddings as emb
 from hiivmind_corpus.embeddings import DIMENSIONS, HASH_COLUMN, META_TABLE, TABLE_NAME, EmbeddingsState, EmbedResult
 from hiivmind_corpus.errors import ExtraMissing, NoModel
 from hiivmind_corpus.store import save
@@ -22,6 +22,7 @@ REPO_DIR = "models--qdrant--bge-small-en-v1.5-onnx-q"
 @pytest.fixture
 def corpus(tmp_path, monkeypatch):
     monkeypatch.setenv("FASTEMBED_CACHE_PATH", str(tmp_path / "fastembed"))
+    monkeypatch.setattr(emb, "find_spec", lambda name: object())  # fastembed is not a dev dependency
     return open_corpus(tmp_path)
 
 
@@ -157,7 +158,6 @@ def test_lag_without_meta_and_with_the_old_generated_at(corpus):
 
 
 def test_embed_without_the_model_raises_no_model(corpus, monkeypatch):
-    monkeypatch.setitem(sys.modules, "fastembed", types.ModuleType("fastembed"))  # not a dev dependency
     with pytest.raises(NoModel) as caught:
         corpus.embeddings.embed()
     assert caught.value.code == "no-model" and "nothing was downloaded" in str(caught.value)
@@ -189,3 +189,43 @@ def test_importing_the_package_imports_no_embedding_library():
     code = "import sys, hiivmind_corpus; assert not {'fastembed', 'lancedb', 'pyarrow'} & set(sys.modules)"
     done = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True)
     assert done.returncode == 0, done.stderr
+
+
+def test_status_and_lag_need_fastembed_too(corpus, monkeypatch):
+    corpus.embeddings.embed(Embedder())
+    _model_dir = corpus.path.parent / "fastembed"
+    monkeypatch.setattr(emb, "find_spec", lambda name: None)
+    assert corpus.embeddings.status() == EmbeddingsState.NOT_INSTALLED
+    with pytest.raises(ExtraMissing):
+        corpus.embeddings.lag()
+    with pytest.raises(ExtraMissing):
+        corpus.embeddings.embed()
+    assert corpus.embeddings.embed(Embedder()).embedded == 0
+
+
+def _legacy_table(corpus, ids):
+    import lancedb
+    import pyarrow as pa
+
+    schema = pa.schema([pa.field("id", pa.string()), pa.field("source", pa.string()), pa.field("title", pa.string()),
+                        pa.field("tags", pa.list_(pa.string())), pa.field("concepts", pa.list_(pa.string())),
+                        pa.field("metadata_text", pa.string()), pa.field("vector", pa.list_(pa.float32(), DIMENSIONS)),
+                        pa.field("updated_at", pa.string())])
+    rows = [{"id": i, "source": "s", "title": "t", "tags": [], "concepts": [], "metadata_text": "m",
+             "vector": [0.0] * DIMENSIONS, "updated_at": "x"} for i in ids]
+    lancedb.connect(str(corpus.path / LANCE)).create_table(TABLE_NAME, data=pa.Table.from_pylist(rows, schema=schema))
+
+
+def test_a_legacy_table_counts_its_rows_no_longer_in_the_index_as_removed(corpus):
+    _legacy_table(corpus, ["polars:a.md", "gone:z.md"])
+    assert corpus.embeddings.embed(Embedder()) == EmbedResult(3, 3, 1)
+    assert {r["id"] for r in _rows(corpus)} == {e.id for e in corpus.index.load().entries}
+
+
+def test_a_legacy_table_over_an_empty_index_is_emptied_and_rebuilt(corpus):
+    _legacy_table(corpus, ["polars:a.md", "gone:z.md"])
+    save(corpus, index=replace(corpus.index.load(), entries=()))
+    assert corpus.embeddings.embed(Embedder()) == EmbedResult(0, 0, 2)
+    assert _rows(corpus) == []
+    assert HASH_COLUMN in [f.name for f in _db(corpus).open_table(TABLE_NAME).schema]
+    assert _meta(corpus)["entry_count"] == "0"
