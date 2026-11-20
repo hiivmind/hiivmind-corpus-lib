@@ -1,0 +1,34 @@
+schema_version: 2
+corpus:
+  name: polars
+  display_name: Polars
+  keywords:
+    - dataframe
+    - rust
+  created_at: "2026-11-01T08:00:00Z"
+sources:
+  - id: polars
+    type: git
+    repo_url: https://github.com/pola-rs/polars
+    branch: main
+    docs_root: docs/source
+    last_commit_sha: 5eaa000000000000000000000000000000000000
+    last_indexed_at: "2026-11-19T10:00:00Z"
+    description: The Polars docs
+index:
+  format: v2
+  last_updated_at: "2026-11-19T10:00:00Z"
+settings:
+  include_patterns:
+    - '**/*.md'
+  exclude_patterns:
+    - '**/changelog/**'
+render:
+  strategy: tiered
+  sections:
+    - id: guide
+      title: User guide
+      description: How to use Polars
+  quick_reference:
+    - polars:a.md
+  description: Polars documentation

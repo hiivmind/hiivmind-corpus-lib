@@ -35,3 +35,17 @@ def write_tree(root: Path, files: dict[str, str]) -> Path:
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_text(text, encoding="utf-8")
     return root
+
+
+def corpus_dir(tmp_path: Path, name: str = "polars") -> Path:
+    import shutil
+
+    target = Path(tmp_path) / name
+    shutil.copytree(GOLDEN / "corpus" / name, target)
+    return target
+
+
+def open_corpus(tmp_path: Path, name: str = "polars"):
+    from hiivmind_corpus.corpus import Corpus
+
+    return Corpus.open(corpus_dir(tmp_path, name), clock=lambda: FIXED)

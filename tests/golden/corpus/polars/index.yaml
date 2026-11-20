@@ -1,0 +1,85 @@
+meta:
+  generated_at: "2026-11-19T10:00:00Z"
+  entry_count: 3
+entries:
+  - id: polars:a.md
+    source: polars
+    path: a.md
+    title: Expressions
+    summary: Expressions in Polars.
+    tags:
+      - expressions
+    keywords:
+      - expressions
+    concepts:
+      - expressions
+    category: guide
+    content_type: markdown
+    size: 1200
+    grep_hint: null
+    headings:
+      - anchor: expressions
+        title: Expressions
+    links_to:
+      - polars:b.md
+    links_from:
+      - polars:b.md
+    frontmatter:
+      title: Expressions
+    stale: false
+    stale_since: null
+    last_indexed: "2026-11-19T10:00:00Z"
+  - id: polars:b.md
+    source: polars
+    path: b.md
+    title: Lazy API
+    summary: The lazy API.
+    tags:
+      - lazy
+    keywords:
+      - lazy
+    concepts:
+      - lazy
+    category: guide
+    content_type: markdown
+    size: 1200
+    grep_hint: null
+    headings:
+      - anchor: lazy
+        title: Lazy API
+    links_to:
+      - polars:a.md
+    links_from:
+      - polars:a.md
+    frontmatter:
+      title: Lazy API
+    stale: false
+    stale_since: null
+    last_indexed: "2026-11-19T10:00:00Z"
+  - id: polars:c.md
+    source: polars
+    path: c.md
+    title: IO
+    summary: Reading files.
+    tags:
+      - io
+    keywords:
+      - io
+    concepts:
+      - io
+    category: guide
+    content_type: markdown
+    size: 1200
+    grep_hint: null
+    headings:
+      - anchor: io
+        title: IO
+    links_to:
+      - polars:a.md
+    links_from:
+      - polars:a.md
+    frontmatter:
+      title: IO
+    stale: false
+    stale_since: null
+    last_indexed: "2026-11-19T10:00:00Z"

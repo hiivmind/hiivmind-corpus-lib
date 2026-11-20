@@ -1,0 +1,7 @@
+schema_version: 2
+sources:
+  - id: tickets
+    type: github
+    base: appXYZ
+    table: Docs
+    view: Grid
