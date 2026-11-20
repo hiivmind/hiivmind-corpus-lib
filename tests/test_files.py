@@ -112,3 +112,21 @@ def test_a_removed_file_is_restored_on_failure(tmp_path, monkeypatch):
     assert stat.S_IMODE(gone.stat().st_mode) == 0o640
     assert not (tmp_path / "y.yaml").exists()
     assert e.value.restored == ("gone.yaml", "y.yaml")
+
+
+def test_an_interrupt_between_replaces_restores_and_is_reraised_unchanged(tmp_path, monkeypatch):
+    (tmp_path / "a.yaml").write_text("old a")
+    (tmp_path / "b.yaml").write_text("old b")
+    real = os.replace
+    state = {"n": 0}
+
+    def replace(src, dst, *a, **k):
+        state["n"] += 1
+        if state["n"] == 2:
+            raise KeyboardInterrupt
+        return real(src, dst, *a, **k)
+
+    monkeypatch.setattr(files.os, "replace", replace)
+    with pytest.raises(KeyboardInterrupt):
+        files.write_set(tmp_path, {"a.yaml": "new a", "b.yaml": "new b"})
+    assert (tmp_path / "a.yaml").read_text() == "old a" and (tmp_path / "b.yaml").read_text() == "old b"

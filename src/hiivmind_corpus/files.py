@@ -80,7 +80,7 @@ def write_set(root: Path, writes: Mapping[str, str], removes: Sequence[str] = ()
             touched.append((name, snap))
             os.unlink(path)
             changed.append(name)
-    except Exception as cause:
+    except BaseException as cause:
         restored: list[str] = []
         unrestored: list[str] = []
         for name, snap in reversed(touched):
@@ -89,5 +89,7 @@ def write_set(root: Path, writes: Mapping[str, str], removes: Sequence[str] = ()
                 restored.append(name)
             except Exception:
                 unrestored.append(name)
+        if not isinstance(cause, Exception):
+            raise
         raise WriteFailed(tuple(sorted(restored)), tuple(sorted(unrestored)), str(cause)) from cause
     return tuple(changed)
