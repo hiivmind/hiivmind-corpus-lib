@@ -292,3 +292,15 @@ def test_save_gives_a_meta_less_index_its_meta(tmp_path):
     meta = corpus.index.load().meta
     assert meta is not None and meta.entry_count == len(entries) and meta.generated_at is None
     assert "Generated: unknown" in (corpus.path / "index.md").read_text(encoding="utf-8")
+
+
+@pytest.mark.parametrize("section_first", [True, False])
+def test_merge_scan_lands_on_the_file_entry_never_a_section(tmp_path, section_first):
+    corpus = open_corpus(tmp_path)
+    section = stale_entry("polars:a.md#s", tier="section", parent="polars:a.md", path="a.md", title="Sec", summary="sec")
+    parent = stale_entry("polars:a.md")
+    put_index(corpus, [section, parent] if section_first else [parent, section])
+    write_files(corpus, ["a.md"])
+    assert corpus.index.merge_scans([{"entries": [scanned("a.md")]}], []).enriched == ("polars:a.md",)
+    assert entry_of(corpus, "polars:a.md").summary == "S a.md"
+    assert entry_of(corpus, "polars:a.md#s").summary == "sec" and entry_of(corpus, "polars:a.md#s").title == "Sec"

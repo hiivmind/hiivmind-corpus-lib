@@ -138,8 +138,7 @@ class SourcesCapability:
         gone: set[str] = set()
         for change in changes.items:
             current = tuple(entries)
-            entry = next((e for e in current if e.source == source_id and e.tier != "section"
-                          and e.rel_path == change.path), None)
+            entry = Index(entries=current).find(source_id, change.path)
             if change.status == "D":
                 if entry is not None:
                     drop = {entry.id} | {c.id for c in _children(current, entry.id)}

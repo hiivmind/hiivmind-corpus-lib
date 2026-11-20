@@ -336,3 +336,10 @@ def test_an_added_path_whose_id_an_entry_already_holds_is_refused_before_any_wri
     assert snapshot(corpus) == before
 
 
+def test_a_section_listed_before_its_file_does_not_hide_the_file_from_an_update(corpus):
+    put_index(corpus, [fresh("polars:a.md#s", path="a.md", tier="section", parent="polars:a.md"), fresh("polars:a.md")])
+    result = corpus.sources.apply_update("polars", changes(("M", "a.md")), Head(NEW))
+    assert result.stale_entries == ("polars:a.md",) and result.added == 0
+    assert entries(corpus)["polars:a.md"].stale is True
+
+

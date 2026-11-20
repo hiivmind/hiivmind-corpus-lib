@@ -103,8 +103,9 @@ class Index:
         return dump_yaml(schema.mapping(index))
 
     def find(self, source: str, rel_path: str) -> Entry | None:
+        """The file entry at (source, rel_path); a section shares the pair and is never returned."""
         for entry in self.entries:
-            if entry.source == source and entry.rel_path == rel_path:
+            if entry.source == source and entry.tier != "section" and entry.rel_path == rel_path:
                 return entry
         return None
 
