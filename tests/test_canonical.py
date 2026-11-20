@@ -118,3 +118,40 @@ def test_the_markdown_goldens_are_what_render_writes(directory):
     assert render.render_texts(config, index, name) == expected
     reversed_index = dataclasses.replace(index, entries=index.entries[::-1])
     assert render.render_texts(config, reversed_index, name) == expected
+
+
+def test_a_config_per_source_kind_is_in_the_goldens():
+    from hiivmind_corpus.config import Config
+    from hiivmind_corpus.sources import SOURCE_KINDS, UnrecognisedSource
+
+    sources = [s for p in sorted((GOLDEN / "config").glob("*.yaml"))
+               for s in Config.loads(p.read_text(encoding="utf-8")).sources]
+    types = {s.type for s in sources if not isinstance(s, UnrecognisedSource)}
+    assert types == set(SOURCE_KINDS)
+    assert any(isinstance(s, UnrecognisedSource) for s in sources)
+
+
+def test_the_enriched_entry_pins_the_nullable_rule(tmp_path):      # CAN-13
+    from support import FIXED, golden, open_corpus
+
+    from hiivmind_corpus.index import Index
+    from hiivmind_corpus.schema import NULL
+
+    text = golden("index/single.yaml")
+    enriched = Index.loads(text).entries[0]
+    assert enriched.stale_since is NULL and enriched.grep_hint is NULL
+    assert Index.loads(text).dumps() == text
+
+    corpus = open_corpus(tmp_path)
+    (corpus.path / "index.yaml").write_text(text, encoding="utf-8")
+    docs = corpus.path / ".source" / "polars" / "docs" / "source"
+    docs.mkdir(parents=True, exist_ok=True)
+    (docs / "b.md").write_text("# B\n", encoding="utf-8")
+    scan = {"path": "b.md", "title": "B", "summary": "S", "tags": [], "keywords": [], "category": "guide"}
+    result = corpus.index.merge_scans([{"entries": [scan]}], [])
+    assert "polars:b.md" in result.enriched
+    entry = corpus.index.load().entries[0]
+    assert entry.stale_since is NULL and entry.grep_hint is NULL
+    out = (corpus.path / "index.yaml").read_text(encoding="utf-8")
+    assert out.count("stale_since: null") >= 1 and "grep_hint: null" in out
+    assert Index.loads(out).dumps() == out
