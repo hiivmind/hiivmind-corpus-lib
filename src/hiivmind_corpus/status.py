@@ -45,7 +45,9 @@ class StatusCapability:
 
 
     def embeddings_lag(self) -> int | None:
-        """The lag, `None` when there is nothing to compare or the extra is missing."""
+        """The lag of a v2 index; `None` for any other, with nothing to compare or the extra missing."""
+        if self.index_format() != IndexFormat.V2:
+            return None
         try:
             return self._corpus.embeddings.lag()
         except ExtraMissing:
@@ -65,7 +67,7 @@ class StatusCapability:
             stale = 0
         lag = None
         try:
-            lag = corpus.embeddings.lag()
+            lag = corpus.embeddings.lag() if fmt == IndexFormat.V2 else None
         except ExtraMissing:
             errors.append(f"embeddings lag not computed: {EXTRA_HINT}")
         needed = (any(s.freshness in (Freshness.BEHIND, Freshness.UNKNOWN) for s in sources)

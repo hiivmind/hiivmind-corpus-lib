@@ -147,3 +147,15 @@ def test_an_unrecognised_source_is_unknown_with_its_error(tmp_path):
     s = Corpus.open(d).status.report({})
     assert s.sources[0].freshness == "unknown" and s.sources[0].error in s.errors
     assert s.refresh_needed is True
+
+
+@pytest.mark.parametrize("keep_page", [True, False])
+def test_lag_is_asked_only_of_a_v2_index(corpus, keep_page):
+    pytest.importorskip("lancedb")
+    _lance(corpus, "2026-11-19T09:00:00Z")
+    (corpus.path / "index.yaml").unlink()
+    if not keep_page:
+        (corpus.path / "index.md").unlink()
+    s = corpus.status.report({"polars": Head(SHA)})
+    assert s.embeddings_lag is None and s.errors == ()
+    assert corpus.status.embeddings_lag() is None
