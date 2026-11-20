@@ -1,0 +1,20 @@
+# a graph as the tools wrote it
+schema_version: 2
+concepts:
+  a:
+    label: A
+    description: The A
+    tags: null
+relationships:
+  - from: a
+    to: a
+    type: see-also
+    origin: manual
+    evidence: null
+    weight: 3
+meta:
+  generated_at: 2026-11-19T10:00:00Z
+  concept_count: 1
+  relationship_count: 1
+  tool: graph-builder
+notes: kept

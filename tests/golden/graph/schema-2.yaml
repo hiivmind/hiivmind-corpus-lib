@@ -1,0 +1,25 @@
+schema_version: 2
+concepts:
+  expressions:
+    label: Expressions
+    description: The expression API
+    tags:
+      - core
+      - api
+  lazy-evaluation:
+    label: Lazy evaluation
+    description: Deferred query plans
+relationships:
+  - from: expressions
+    to: lazy-evaluation
+    type: see-also
+    origin: wikilink
+    evidence: polars:a.md
+  - from: lazy-evaluation
+    to: expressions
+    type: depends-on
+    origin: manual
+meta:
+  generated_at: "2026-11-19T10:00:00Z"
+  concept_count: 2
+  relationship_count: 2

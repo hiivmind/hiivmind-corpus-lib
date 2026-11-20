@@ -10,6 +10,7 @@ from pathlib import Path
 
 from .config import FILE, ConfigCapability
 from .errors import NotACorpus
+from .graph import GraphCapability
 from .index import IndexCapability
 
 PLACEHOLDER = "Run hiivmind-corpus-build"
@@ -26,6 +27,7 @@ class Corpus:
         self._clock = clock
         self.config = ConfigCapability(self)
         self.index = IndexCapability(self)
+        self.graph = GraphCapability(self)
 
     @classmethod
     def open(cls, path: str | PathLike, *, clock: Callable[[], datetime] | None = None,
