@@ -34,9 +34,11 @@ class WebSource(Source):
     extra: tuple[tuple[str, Any], ...] = ()
 
 
-def _oldest_fetch(source: WebSource) -> datetime | None:
+def _fetch_reference(source: WebSource) -> datetime | None:
+    """The later of the oldest urls[].fetched_at and last_fetched_at; either may be absent."""
     stamps = [u.fetched_at for u in source.urls or () if u.fetched_at is not None]
-    return min(stamps) if stamps else source.last_fetched_at
+    candidates = [t for t in (min(stamps, default=None), source.last_fetched_at) if t is not None]
+    return max(candidates, default=None)
 
 
 class WebKind:
@@ -58,7 +60,7 @@ class WebKind:
     def freshness(self, source: WebSource, observation: Observation | None, now: datetime) -> Freshness:
         if observation is None and source.fetch_mode == "live":
             return Freshness.MANUAL
-        oldest = _oldest_fetch(source)
+        oldest = _fetch_reference(source)
         if oldest is None:
             return Freshness.UNKNOWN
         if isinstance(observation, Snapshot):

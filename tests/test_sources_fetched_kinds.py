@@ -92,7 +92,7 @@ def test_web_locate_live():
 
 
 def test_web_freshness_without_observation():
-    s = WEB.parse(CACHED)
+    s = WEB.parse({k: v for k, v in CACHED.items() if k != "last_fetched_at"})  # the oldest url stamp alone
     assert WEB.freshness(s, None, OLDEST + timedelta(days=7)) is Freshness.CURRENT
     assert WEB.freshness(s, None, OLDEST + timedelta(days=7, seconds=1)) is Freshness.BEHIND
     only_last = WEB.parse({k: v for k, v in CACHED.items() if k != "urls"})
@@ -104,7 +104,7 @@ def test_web_freshness_without_observation():
 
 
 def test_web_freshness_with_snapshot():
-    s = WEB.parse(CACHED)
+    s = WEB.parse({k: v for k, v in CACHED.items() if k != "last_fetched_at"})  # the oldest url stamp alone
     assert WEB.freshness(s, Snapshot({"a": OLDEST + timedelta(seconds=1)}), FIXED) is Freshness.BEHIND
     assert WEB.freshness(s, Snapshot({"a": OLDEST}), FIXED) is Freshness.CURRENT
     none = WEB.parse({"id": "w", "type": "web"})
@@ -168,3 +168,12 @@ def test_web_recorded_fetch_time_only_for_snapshot_or_no_observation():
     for obs in (Head("x"), ManifestHash("x"), Unobserved("x")):
         r = WEB.recorded(s, obs, FIXED)
         assert r.last_fetched_at == before and r.last_indexed_at == FIXED
+
+
+def test_web_freshness_counts_the_last_recorded_fetch():
+    refreshed = WEB.recorded(WEB.parse(CACHED), None, FIXED)
+    assert WEB.freshness(refreshed, None, FIXED) is Freshness.CURRENT
+    # the later of the oldest url stamp and last_fetched_at is the reference, either may be absent
+    no_last = WEB.parse({k: v for k, v in CACHED.items() if k != "last_fetched_at"})
+    assert WEB.freshness(no_last, None, OLDEST + timedelta(days=7, seconds=1)) is Freshness.BEHIND
+    assert WEB.freshness(refreshed, Snapshot({"a": FIXED - timedelta(seconds=1)}), FIXED) is Freshness.CURRENT
