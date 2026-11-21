@@ -46,6 +46,6 @@ def corpus_dir(tmp_path: Path, name: str = "polars") -> Path:
 
 
 def open_corpus(tmp_path: Path, name: str = "polars"):
-    from hiivmind_corpus.corpus import Corpus
+    from hiivmind_corpus_lib.corpus import Corpus
 
     return Corpus.open(corpus_dir(tmp_path, name), clock=lambda: FIXED)

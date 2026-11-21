@@ -3,8 +3,8 @@ import stat
 
 import pytest
 
-from hiivmind_corpus import files
-from hiivmind_corpus.errors import WriteFailed
+from hiivmind_corpus_lib import files
+from hiivmind_corpus_lib.errors import WriteFailed
 
 
 def failing_replace(monkeypatch, fail_on):

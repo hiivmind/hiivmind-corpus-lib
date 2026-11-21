@@ -8,9 +8,9 @@ from pathlib import Path
 import pytest
 from support import FIXED, open_corpus
 
-import hiivmind_corpus
-from hiivmind_corpus import sources
-from hiivmind_corpus.errors import CorpusError
+import hiivmind_corpus_lib
+from hiivmind_corpus_lib import sources
+from hiivmind_corpus_lib.errors import CorpusError
 
 NAMES = """Corpus CorpusError NotACorpus InvalidFile NoSuchSource NoSuchEntry InvalidChanges NoModel ExtraMissing
 MigrationRefused Refusal WriteFailed Head ManifestHash Snapshot Unobserved Observation Change Changes Listing
@@ -29,11 +29,11 @@ ENUMS = ("Freshness", "IndexFormat", "EmbeddingsState", "Refusal")
 
 @pytest.mark.parametrize("name", NAMES)
 def test_every_interface_name_imports(name):
-    assert hasattr(hiivmind_corpus, name)
+    assert hasattr(hiivmind_corpus_lib, name)
 
 
 def test_all_lists_every_interface_name():
-    assert set(NAMES) <= set(hiivmind_corpus.__all__)
+    assert set(NAMES) <= set(hiivmind_corpus_lib.__all__)
 
 
 @pytest.mark.parametrize("name", KIND_CLASSES)
@@ -49,20 +49,20 @@ def test_a_corpus_exposes_its_capabilities(tmp_path):
 
 def test_results_are_frozen_dataclasses_or_enums():
     for name in RESULTS:
-        cls = getattr(hiivmind_corpus, name)
+        cls = getattr(hiivmind_corpus_lib, name)
         assert dataclasses.is_dataclass(cls), name
         assert cls.__dataclass_params__.frozen, name
     for name in ENUMS:
-        assert issubclass(getattr(hiivmind_corpus, name), enum.Enum), name
+        assert issubclass(getattr(hiivmind_corpus_lib, name), enum.Enum), name
 
 
 def test_asdict_works_on_the_results(tmp_path):
     corpus = open_corpus(tmp_path)
     status = corpus.status.report({})
     assert dataclasses.asdict(status)["corpus"] == status.corpus
-    update = dataclasses.asdict(hiivmind_corpus.UpdateResult(0, (), (), (), (), (), (), 0))
+    update = dataclasses.asdict(hiivmind_corpus_lib.UpdateResult(0, (), (), (), (), (), (), 0))
     assert update["files_changed"] == 0
-    migration = hiivmind_corpus.MigrationResult(migrated=1, skipped=(), strategy="single", sections=())
+    migration = hiivmind_corpus_lib.MigrationResult(migrated=1, skipped=(), strategy="single", sections=())
     assert dataclasses.asdict(migration)["migrated"] == 1
 
 

@@ -8,12 +8,12 @@ from pathlib import Path
 import pytest
 from support import FIXED, open_corpus
 
-from hiivmind_corpus.config import Build, Config, IndexInfo, Render
-from hiivmind_corpus.errors import NoSuchSource
-from hiivmind_corpus.graph import Graph
-from hiivmind_corpus.index import Entry, Index, IndexMeta
-from hiivmind_corpus.schema import NULL
-from hiivmind_corpus.sources import (
+from hiivmind_corpus_lib.config import Build, Config, IndexInfo, Render
+from hiivmind_corpus_lib.errors import NoSuchSource
+from hiivmind_corpus_lib.graph import Graph
+from hiivmind_corpus_lib.index import Entry, Index, IndexMeta
+from hiivmind_corpus_lib.schema import NULL
+from hiivmind_corpus_lib.sources import (
     SOURCE_KINDS,
     Change,
     Changes,
@@ -325,7 +325,7 @@ def test_a_tracking_only_update_gives_a_meta_less_index_its_meta(corpus, change)
 # --- final-review fixes ----------------------------------------------------------------------------------------------
 
 def test_an_added_path_whose_id_an_entry_already_holds_is_refused_before_any_write(corpus):
-    from hiivmind_corpus.errors import InvalidFile
+    from hiivmind_corpus_lib.errors import InvalidFile
 
     put_index(corpus, [fresh("polars:new.md", path="a.md")])
     before = snapshot(corpus)

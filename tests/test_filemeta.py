@@ -1,7 +1,7 @@
 import pytest
 
-from hiivmind_corpus.filemeta import LARGE_FILE_LINES, file_metadata, slug
-from hiivmind_corpus.index import Heading
+from hiivmind_corpus_lib.filemeta import LARGE_FILE_LINES, file_metadata, slug
+from hiivmind_corpus_lib.index import Heading
 
 
 def _write(tmp_path, name, text):

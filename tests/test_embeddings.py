@@ -9,10 +9,10 @@ import pytest
 
 pytest.importorskip("lancedb")
 
-from hiivmind_corpus import embeddings as emb
-from hiivmind_corpus.embeddings import DIMENSIONS, HASH_COLUMN, META_TABLE, TABLE_NAME, EmbeddingsState, EmbedResult
-from hiivmind_corpus.errors import ExtraMissing, NoModel
-from hiivmind_corpus.store import save
+from hiivmind_corpus_lib import embeddings as emb
+from hiivmind_corpus_lib.embeddings import DIMENSIONS, HASH_COLUMN, META_TABLE, TABLE_NAME, EmbeddingsState, EmbedResult
+from hiivmind_corpus_lib.errors import ExtraMissing, NoModel
+from hiivmind_corpus_lib.store import save
 from support import open_corpus
 
 LANCE = "index-embeddings.lance"
@@ -186,7 +186,7 @@ def test_embed_of_an_empty_index_creates_no_table(corpus):
 
 
 def test_importing_the_package_imports_no_embedding_library():
-    code = "import sys, hiivmind_corpus; assert not {'fastembed', 'lancedb', 'pyarrow'} & set(sys.modules)"
+    code = "import sys, hiivmind_corpus_lib; assert not {'fastembed', 'lancedb', 'pyarrow'} & set(sys.modules)"
     done = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True)
     assert done.returncode == 0, done.stderr
 

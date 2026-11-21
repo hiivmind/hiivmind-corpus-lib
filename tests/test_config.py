@@ -3,10 +3,10 @@ from pathlib import Path
 
 import pytest
 
-from hiivmind_corpus.config import Config
-from hiivmind_corpus.corpus import Corpus
-from hiivmind_corpus.errors import InvalidFile, NotACorpus
-from hiivmind_corpus.sources import GitSource, UnrecognisedSource
+from hiivmind_corpus_lib.config import Config
+from hiivmind_corpus_lib.corpus import Corpus
+from hiivmind_corpus_lib.errors import InvalidFile, NotACorpus
+from hiivmind_corpus_lib.sources import GitSource, UnrecognisedSource
 from support import FIXED, corpus_dir, golden, open_corpus
 
 SHA = "5eaa000000000000000000000000000000000000"

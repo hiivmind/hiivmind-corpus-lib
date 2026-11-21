@@ -6,9 +6,9 @@ from typing import Any
 
 import pytest
 
-from hiivmind_corpus.errors import InvalidFile
-from hiivmind_corpus.schema import NULL, Null, mapping, parse_timestamp, read, stamp
-from hiivmind_corpus.yamlio import dump_yaml, load_yaml
+from hiivmind_corpus_lib.errors import InvalidFile
+from hiivmind_corpus_lib.schema import NULL, Null, mapping, parse_timestamp, read, stamp
+from hiivmind_corpus_lib.yamlio import dump_yaml, load_yaml
 
 
 @dataclass(frozen=True)

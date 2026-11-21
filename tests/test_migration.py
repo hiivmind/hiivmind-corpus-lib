@@ -6,14 +6,14 @@ from pathlib import Path
 
 import pytest
 
-from hiivmind_corpus import files
-from hiivmind_corpus.config import Config
-from hiivmind_corpus.corpus import Corpus
-from hiivmind_corpus.errors import MigrationRefused, Refusal, WriteFailed
-from hiivmind_corpus.index import Index, Skip
-from hiivmind_corpus.migration import MigrationResult
-from hiivmind_corpus.migration.v1 import parse_v1_line
-from hiivmind_corpus.schema import NULL
+from hiivmind_corpus_lib import files
+from hiivmind_corpus_lib.config import Config
+from hiivmind_corpus_lib.corpus import Corpus
+from hiivmind_corpus_lib.errors import MigrationRefused, Refusal, WriteFailed
+from hiivmind_corpus_lib.index import Index, Skip
+from hiivmind_corpus_lib.migration import MigrationResult
+from hiivmind_corpus_lib.migration.v1 import parse_v1_line
+from hiivmind_corpus_lib.schema import NULL
 from support import FIXED, GOLDEN
 from v1_fixtures import build_v1
 

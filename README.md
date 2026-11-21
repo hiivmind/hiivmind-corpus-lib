@@ -1,6 +1,6 @@
 # hiivmind-corpus-lib
 
-The `hiivmind_corpus` Python package (distribution `hiivmind-corpus-lib`). It reads and writes a corpus directory: `config.yaml`, `index.yaml`, `graph.yaml` and the rendered `index*.md` files. One `Corpus` object is opened on the directory, and each capability is an attribute of it. Capabilities take data and return data.
+The `hiivmind_corpus_lib` Python package (distribution `hiivmind-corpus-lib`). It reads and writes a corpus directory: `config.yaml`, `index.yaml`, `graph.yaml` and the rendered `index*.md` files. One `Corpus` object is opened on the directory, and each capability is an attribute of it. Capabilities take data and return data.
 
 **The package runs no command.** It does not call `git`, `gh` or any other program, and it does not touch the network. Nodes run `git` and `gh` and hand the facts in: a commit sha (`Head`), command output (`parse_name_status`, `Listing.of`), a fetched manifest hash, a snapshot of modification times. The package turns those facts into changes on disk.
 
@@ -20,7 +20,7 @@ Results are frozen dataclasses, enums and tuples. Failures are `CorpusError` sub
 
 ```python
 from datetime import UTC, datetime
-from hiivmind_corpus import Corpus, Head, Listing, parse_name_status
+from hiivmind_corpus_lib import Corpus, Head, Listing, parse_name_status
 
 corpus = Corpus.open("~/corpora/hiivmind-corpus-polars",
                      clock=lambda: datetime(2026, 11, 20, 9, 0, tzinfo=UTC))
@@ -61,7 +61,7 @@ A malformed graph is `InvalidFile` on load. One that loads but breaks a rule is 
 
 ### sources
 
-Seven kinds: `corpus.sources.kinds` is `("git", "generated-docs", "obsidian", "self", "local", "web", "llms-txt")`. A source whose `type` no kind owns loads as `UnrecognisedSource` and is written back as found. Every kind's source class (`GitSource` and the others) and `UnrecognisedSource` import from `hiivmind_corpus.sources`.
+Seven kinds: `corpus.sources.kinds` is `("git", "generated-docs", "obsidian", "self", "local", "web", "llms-txt")`. A source whose `type` no kind owns loads as `UnrecognisedSource` and is written back as found. Every kind's source class (`GitSource` and the others) and `UnrecognisedSource` import from `hiivmind_corpus_lib.sources`.
 
 ```python
 corpus.sources.locate(entry)                     # Location(file=Path(...), url=None)
@@ -102,7 +102,7 @@ corpus.previews.of(["polars:a.md"], token_limit=500)
 
 ```python
 from pathlib import Path
-from hiivmind_corpus import file_metadata, slug
+from hiivmind_corpus_lib import file_metadata, slug
 file_metadata(Path("expressions.md"))   # FileMetadata(content_type="markdown", lines=1203, size="large", grep_hint=..., headings=(Heading(...), ...))
 slug("Window Functions & `over()`")     # "window-functions-over"
 ```
@@ -134,7 +134,7 @@ All derive from `CorpusError`. Not errors: `status.report` with no observation f
 
 ## The embeddings extra
 
-`uv sync --extra embeddings` installs `fastembed`, `lancedb` (0.23.0 or later) and `pyarrow`. They are imported only when an embeddings operation runs; `import hiivmind_corpus` imports none of them.
+`uv sync --extra embeddings` installs `fastembed`, `lancedb` (0.23.0 or later) and `pyarrow`. They are imported only when an embeddings operation runs; `import hiivmind_corpus_lib` imports none of them.
 
 ```python
 corpus.embeddings.status()   # "absent" | "not-installed" | "no-model" | "ready"

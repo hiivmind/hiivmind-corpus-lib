@@ -1,7 +1,7 @@
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
-from hiivmind_corpus.sources import (
+from hiivmind_corpus_lib.sources import (
     SOURCE_KINDS,
     Freshness,
     Head,
@@ -10,9 +10,9 @@ from hiivmind_corpus.sources import (
     Snapshot,
     Unobserved,
 )
-from hiivmind_corpus.sources.llms_txt import LlmsTxtKind
-from hiivmind_corpus.sources.local import LocalKind
-from hiivmind_corpus.sources.web import WebKind
+from hiivmind_corpus_lib.sources.llms_txt import LlmsTxtKind
+from hiivmind_corpus_lib.sources.local import LocalKind
+from hiivmind_corpus_lib.sources.web import WebKind
 from support import FIXED, StubCorpus
 
 CORPUS = StubCorpus(Path("/c/corpus"), Path("/repo"))

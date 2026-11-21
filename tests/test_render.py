@@ -6,10 +6,10 @@ from pathlib import Path
 
 from support import FIXED, corpus_dir, golden
 
-from hiivmind_corpus.config import Config
-from hiivmind_corpus.corpus import Corpus
-from hiivmind_corpus.index import Entry, Index
-from hiivmind_corpus.render import RenderResult, render_texts, stale_sub_indexes
+from hiivmind_corpus_lib.config import Config
+from hiivmind_corpus_lib.corpus import Corpus
+from hiivmind_corpus_lib.index import Entry, Index
+from hiivmind_corpus_lib.render import RenderResult, render_texts, stale_sub_indexes
 
 
 def render_corpus(tmp_path: Path, name: str, clock=lambda: FIXED) -> Corpus:

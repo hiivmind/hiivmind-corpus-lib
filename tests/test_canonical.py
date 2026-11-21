@@ -14,9 +14,9 @@ HERE = Path(__file__).parent
 GOLDEN = HERE / "golden"
 DRIFT = HERE / "drift"
 
-CLASSES = {"config": ("hiivmind_corpus.config", "Config"),
-           "index": ("hiivmind_corpus.index", "Index"),
-           "graph": ("hiivmind_corpus.graph", "Graph")}
+CLASSES = {"config": ("hiivmind_corpus_lib.config", "Config"),
+           "index": ("hiivmind_corpus_lib.index", "Index"),
+           "graph": ("hiivmind_corpus_lib.graph", "Graph")}
 DIR_KINDS = ("corpus", "render", "migrated")
 
 
@@ -105,11 +105,11 @@ def _dir_cases():
 @pytest.mark.parametrize("directory", _dir_cases())
 def test_the_markdown_goldens_are_what_render_writes(directory):
     try:
-        render = importlib.import_module("hiivmind_corpus.render")
+        render = importlib.import_module("hiivmind_corpus_lib.render")
     except ModuleNotFoundError as e:
-        if e.name != "hiivmind_corpus.render":
+        if e.name != "hiivmind_corpus_lib.render":
             raise
-        pytest.skip("hiivmind_corpus.render is not built yet")
+        pytest.skip("hiivmind_corpus_lib.render is not built yet")
     config = _cls("config").loads((directory / "config.yaml").read_text(encoding="utf-8"))
     index = _cls("index").loads((directory / "index.yaml").read_text(encoding="utf-8"))
     corpus = getattr(config, "corpus", None)
@@ -121,8 +121,8 @@ def test_the_markdown_goldens_are_what_render_writes(directory):
 
 
 def test_a_config_per_source_kind_is_in_the_goldens():
-    from hiivmind_corpus.config import Config
-    from hiivmind_corpus.sources import SOURCE_KINDS, UnrecognisedSource
+    from hiivmind_corpus_lib.config import Config
+    from hiivmind_corpus_lib.sources import SOURCE_KINDS, UnrecognisedSource
 
     sources = [s for p in sorted((GOLDEN / "config").glob("*.yaml"))
                for s in Config.loads(p.read_text(encoding="utf-8")).sources]
@@ -134,8 +134,8 @@ def test_a_config_per_source_kind_is_in_the_goldens():
 def test_the_enriched_entry_pins_the_nullable_rule(tmp_path):      # CAN-13
     from support import FIXED, golden, open_corpus
 
-    from hiivmind_corpus.index import Index
-    from hiivmind_corpus.schema import NULL
+    from hiivmind_corpus_lib.index import Index
+    from hiivmind_corpus_lib.schema import NULL
 
     text = golden("index/single.yaml")
     enriched = Index.loads(text).entries[0]
