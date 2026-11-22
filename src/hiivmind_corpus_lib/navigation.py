@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import posixpath
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import StrEnum
 from pathlib import Path
 from typing import Any
@@ -45,6 +45,19 @@ class Navigation:
     format: NavFormat | None
     hierarchy: tuple[NavItem, ...]
     coverage: Coverage
+
+
+@dataclass
+class _Node:
+    """A navigation item while its children are gathered."""
+
+    title: str
+    path: str | None
+    level: int
+    children: list[_Node] = field(default_factory=list)
+
+    def freeze(self) -> NavItem:
+        return NavItem(self.title, self.path, self.level, tuple(c.freeze() for c in self.children))
 
 
 class _Loader(yaml.SafeLoader):
@@ -105,22 +118,18 @@ def _file_of(target: str) -> str | None:
 
 def _markdown_nav(path: Path, nav_file: str) -> tuple[NavItem, ...]:
     parent = posixpath.dirname(nav_file)
-    roots: list[list[Any]] = []  # [title, path, level, children]
-    stack: list[list[Any]] = []
+    roots: list[_Node] = []
+    stack: list[_Node] = []
     for link in links(path.read_text(encoding="utf-8", errors="replace")):
         target = link.target
         if target and (file := _file_of(target)):  # relative to the nav file; anchor kept; external URL as written
             target = posixpath.normpath(posixpath.join(parent, file)) + target[len(file):]
-        node: list[Any] = [link.title, target, link.depth, []]
-        while stack and stack[-1][2] >= link.depth:
+        node = _Node(link.title, target, link.depth)
+        while stack and stack[-1].level >= link.depth:
             stack.pop()
-        (stack[-1][3] if stack else roots).append(node)
+        (stack[-1].children if stack else roots).append(node)
         stack.append(node)
-
-    def freeze(node: list[Any]) -> NavItem:
-        return NavItem(node[0], node[1], node[2], tuple(freeze(c) for c in node[3]))
-
-    return tuple(freeze(n) for n in roots)
+    return tuple(n.freeze() for n in roots)
 
 
 def _toc_leaf(root: Path, entry: dict[str, Any], level: int) -> NavItem | None:
@@ -182,12 +191,15 @@ def navigation_of(root: Path) -> Navigation:
             path = root / name
             if not path.is_file():
                 continue
-            if fmt is NavFormat.MKDOCS:
-                hierarchy = _mkdocs(path)
-            elif fmt is NavFormat.JUPYTER_BOOK:
-                hierarchy = _jupyter_book(root, path)
-            else:
-                hierarchy = _markdown_nav(path, name)
+            try:  # an unreadable navigation file yields no entries (NAV-1): the next candidate is tried
+                if fmt is NavFormat.MKDOCS:
+                    hierarchy = _mkdocs(path)
+                elif fmt is NavFormat.JUPYTER_BOOK:
+                    hierarchy = _jupyter_book(root, path)
+                else:
+                    hierarchy = _markdown_nav(path, name)
+            except OSError:
+                continue
             if hierarchy:
                 files = [f for p in _count(hierarchy) if (f := _file_of(p))]
                 resolved = sum((root / f).exists() for f in files)

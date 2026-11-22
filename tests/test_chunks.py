@@ -167,3 +167,16 @@ def test_crlf_text_chunks_on_the_same_lines():  # Review Focus 3
 
 def test_the_count_is_injected():  # CMP-5
     assert len(chunks("a\nb\nc", Strategy.MARKDOWN, target_tokens=1, overlap_tokens=0, count=lambda t: 100)) > 1
+
+
+def test_paragraph_strategy_splits_at_a_blank_line_rather_than_a_text_line():  # CHK-1 (a blank scores 50, a text line 10)
+    lines = ["x"] * 20
+    lines[8] = ""                       # the target (10 words) is filled at index 9; the blank is the best boundary within the window
+    got = chunks("\n".join(lines), Strategy.PARAGRAPH, target_tokens=10, overlap_tokens=0, count=words)
+    assert R(got)[0] == (1, 9)
+
+
+def test_a_range_of_blank_lines_is_not_a_chunk():  # CHK-2 (the text's blank lines 6-7 fall between chunks; every non-empty line is still covered)
+    text = "# H\n- i\n- i\n- i\n\n\n\nx\n- i"
+    got = chunks(text, Strategy.MARKDOWN, target_tokens=3, overlap_tokens=0, count=words)
+    assert R(got) == [(1, 5), (8, 9)] and all(c.text.strip() for c in got)

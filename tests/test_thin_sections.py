@@ -192,3 +192,10 @@ def test_a_schema_1_graph_names_the_entry_each_section_went_into(corpus):
 def test_a_section_merged_into_one_later_merged_follows_it_to_the_end():
     graph = Graph.loads("schema_version: 1\nconcepts:\n  c:\n    label: C\n    description: d\n    entries: [a, b]\n")
     assert graph.with_entries_merged({"a": "b", "b": "c"}).concepts["c"].entries == ("c",)
+
+
+def test_a_sibling_in_another_source_is_not_a_merge_target():  # THN-1
+    index = ix(file("src1:a.md"),
+               sec("src2:b.md#first", "src1:a.md", 2, (1, 3), BIG, source="src2"),
+               sec("src1:a.md#small", "src1:a.md", 2, (10, 12), "Short"))
+    assert thin(index, min_tokens=100)[1].merges == (Merge("src1:a.md#small", "src1:a.md"),)

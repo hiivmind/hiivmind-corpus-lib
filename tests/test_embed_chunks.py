@@ -107,8 +107,10 @@ def test_chunks_get_a_full_text_index(corpus):  # EMB-2
 @pytest.mark.parametrize("n, vector_index", [(500, False), (501, True)])
 def test_chunks_get_a_cosine_vector_index_above_500_rows(corpus, n, vector_index):  # EMB-3
     corpus.embeddings.embed_chunks({("polars", "big.md"): [ch(i, f"t{i}", i + 1, i + 1) for i in range(n)]}, LengthEmbedder())
-    kinds = [i.index_type for i in _db(corpus).open_table("chunks").list_indices()]
-    assert ("IvfPq" in kinds) is vector_index
+    table = _db(corpus).open_table("chunks")
+    vector = [i.name for i in table.list_indices() if i.index_type == "IvfPq"]
+    assert bool(vector) is vector_index
+    assert all(table.index_stats(name).distance_type == "cosine" for name in vector)
 
 
 def test_chunk_meta_keeps_the_entry_count_and_embed_keeps_the_chunk_count(corpus):  # EMB-4

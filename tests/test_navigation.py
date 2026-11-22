@@ -1,3 +1,5 @@
+import os
+
 import pytest
 
 from hiivmind_corpus_lib.navigation import Coverage, NavFormat, NavItem as N, Navigation, markdown_files, navigation_of
@@ -112,6 +114,17 @@ def test_a_navigation_file_that_is_not_yaml_yields_no_entries_and_the_next_one_i
     nav = _nav(tmp_path, {"mkdocs.yml": "nav: [unclosed\n", "_sidebar.md": "- [S](s.md)\n"})
     assert nav.nav_file == "_sidebar.md"
     assert _nav(tmp_path / "only", {"mkdocs.yml": "nav: [unclosed\n"}).found is False
+
+
+def test_an_unreadable_navigation_file_yields_no_entries_and_the_next_one_is_read(tmp_path):  # NAV-1
+    write_tree(tmp_path, {"mkdocs.yml": "nav:\n  - Home: index.md\n", "_sidebar.md": "- [S](s.md)\n"})
+    (tmp_path / "mkdocs.yml").chmod(0)
+    try:
+        if os.access(tmp_path / "mkdocs.yml", os.R_OK):
+            pytest.skip("this user reads files without read permission")
+        assert navigation_of(tmp_path).nav_file == "_sidebar.md"
+    finally:
+        (tmp_path / "mkdocs.yml").chmod(0o644)
 
 
 def test_markdown_files_are_md_and_mdx_sorted(tmp_path):  # NAV-3, LRG-1 (the shared rule)

@@ -27,6 +27,8 @@ def _document(path: Path) -> Iterator:
     try:
         if not doc.is_pdf:
             raise InvalidFile(str(path), "", "not a readable PDF")
+        if doc.needs_pass:
+            raise InvalidFile(str(path), "", "not a readable PDF (it needs a password)")
         yield doc
     finally:
         doc.close()

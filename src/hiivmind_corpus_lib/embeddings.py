@@ -18,7 +18,7 @@ from pathlib import Path
 from types import ModuleType
 from typing import TYPE_CHECKING, Any
 
-from .errors import ExtraMissing, NoModel
+from .errors import ExtraMissing, InvalidFile, NoModel
 from .schema import parse_timestamp, stamp
 
 if TYPE_CHECKING:
@@ -162,9 +162,41 @@ def _read_meta(db, directory: Path) -> dict[str, str]:
         arrow = db.open_table(META_TABLE).to_arrow()
         return dict(zip(arrow.column("key").to_pylist(), arrow.column("value").to_pylist(), strict=True))
     legacy = directory / "_meta.json"
-    if legacy.is_file():
-        return {k: str(v) for k, v in json.loads(legacy.read_text(encoding="utf-8")).items() if v is not None}
-    return {}
+    if not legacy.is_file():
+        return {}
+    where = f"{LANCE_DIR}/_meta.json"
+    try:
+        data = json.loads(legacy.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:
+        raise InvalidFile(where, "", f"not JSON ({exc.msg}, line {exc.lineno}); run embed again.") from None
+    if not isinstance(data, dict):
+        raise InvalidFile(where, "", "must be a JSON object; run embed again.")
+    return {k: str(v) for k, v in data.items() if v is not None}
+
+
+def _whole(values: Mapping[str, str], key: str) -> int:
+    try:
+        return int(values[key])
+    except ValueError:
+        raise InvalidFile(LANCE_DIR, f"_meta.{key}", f"`_meta.{key}` is not a whole number: {values[key]!r}") from None
+
+
+@dataclass(frozen=True)
+class _Pending:
+    """A chunk given to `embed_chunks`, with what its row needs."""
+
+    source: str
+    path: str
+    chunk: Chunk
+    parent: str | None
+    text: str                                     # the text embedded: `heading_context | text`
+    digest: str
+
+    def matches(self, row: Mapping[str, Any]) -> bool:
+        c = self.chunk
+        return (row[HASH_COLUMN], row["parent"], row["line_start"], row["line_end"], row["overlap_previous"],
+                row["heading_context"]) == (self.digest, self.parent, c.line_start, c.line_end, c.overlap_previous,
+                                            c.heading_context)
 
 
 def _write_meta(db, pa, directory: Path, now: str, *, generated_at: str | None = None,
@@ -288,23 +320,18 @@ class EmbeddingsCapability:
             if wanted:
                 old = {r["id"]: r for r in table.search().where(wanted).limit(None).to_arrow().to_pylist()}
 
-        given: dict[str, tuple] = {}
+        given: dict[str, _Pending] = {}
         for (source, path), items in chunks.items():
             entry = index.find(source, path)
             for c in items:
                 text = f"{c.heading_context} | {c.text}" if c.heading_context else c.text
-                given[f"{source}:{path}#{c.index}"] = (source, path, c, entry.id if entry else None, text,
-                                                       hashlib.sha256(text.encode("utf-8")).hexdigest())
+                given[f"{source}:{path}#{c.index}"] = _Pending(source, path, c, entry.id if entry else None, text,
+                                                               hashlib.sha256(text.encode("utf-8")).hexdigest())
         gone = [i for i in old if i not in given]
 
-        def same(cid: str, row: dict) -> bool:
-            source, path, c, parent, _, digest = given[cid]
-            return (row["text_hash"], row["parent"], row["line_start"], row["line_end"], row["overlap_previous"],
-                    row["heading_context"]) == (digest, parent, c.line_start, c.line_end, c.overlap_previous, c.heading_context)
-
-        write = [i for i in given if i not in old or not same(i, old[i])]
-        fresh = [i for i in write if i not in old or old[i]["text_hash"] != given[i][5]]
-        vectors = list(embedder([given[i][4] for i in fresh])) if fresh else []
+        write = [i for i in given if i not in old or not given[i].matches(old[i])]
+        fresh = [i for i in write if i not in old or old[i][HASH_COLUMN] != given[i].digest]
+        vectors = list(embedder([given[i].text for i in fresh])) if fresh else []
         new_vectors = dict(zip(fresh, vectors, strict=True))
         if write:
             schema = pa.schema([pa.field("id", pa.string()), pa.field("parent", pa.string()), pa.field("source", pa.string()),
@@ -316,12 +343,12 @@ class EmbeddingsCapability:
                                 pa.field("updated_at", pa.string()), pa.field(HASH_COLUMN, pa.string())])
             records = []
             for cid in write:
-                source, path, c, parent, _, digest = given[cid]
+                p, c = given[cid], given[cid].chunk
                 vector = new_vectors[cid] if cid in new_vectors else old[cid]["vector"]
-                records.append({"id": cid, "parent": parent, "source": source, "path": path, "chunk_index": c.index,
+                records.append({"id": cid, "parent": p.parent, "source": p.source, "path": p.path, "chunk_index": c.index,
                                 "chunk_text": c.text, "heading_context": c.heading_context, "line_start": c.line_start,
                                 "line_end": c.line_end, "overlap_previous": c.overlap_previous,
-                                "vector": [float(x) for x in vector], "updated_at": now, HASH_COLUMN: digest})
+                                "vector": [float(x) for x in vector], "updated_at": now, HASH_COLUMN: p.digest})
             data = pa.Table.from_pylist(records, schema=schema)
             if table is None:
                 table = db.create_table(CHUNKS_TABLE, data=data)
@@ -342,6 +369,6 @@ class EmbeddingsCapability:
         values = _read_meta(lancedb.connect(str(self._dir)), self._dir)
         if not all(values.get(k) for k in ("model", "dimensions", "generated_at")):
             return None
-        counts = {k: int(values[k]) if values.get(k) is not None else None for k in ("entry_count", "chunk_count")}
-        return EmbeddingsMeta(values["model"], int(values["dimensions"]),
+        counts = {k: _whole(values, k) if values.get(k) is not None else None for k in ("entry_count", "chunk_count")}
+        return EmbeddingsMeta(values["model"], _whole(values, "dimensions"),
                               parse_timestamp(values["generated_at"], LANCE_DIR, "_meta.generated_at"), **counts)

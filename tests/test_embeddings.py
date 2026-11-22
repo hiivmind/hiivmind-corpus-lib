@@ -2,6 +2,7 @@
 
 import json
 import sys
+import types
 from dataclasses import replace
 from datetime import UTC, datetime
 
@@ -13,7 +14,7 @@ from hiivmind_corpus_lib import embeddings as emb
 from hiivmind_corpus_lib.embeddings import (
     DIMENSIONS, HASH_COLUMN, META_TABLE, TABLE_NAME, EmbeddingsMeta, EmbeddingsState, EmbedResult,
 )
-from hiivmind_corpus_lib.errors import ExtraMissing, NoModel
+from hiivmind_corpus_lib.errors import ExtraMissing, InvalidFile, NoModel
 from hiivmind_corpus_lib.index import Entry
 from hiivmind_corpus_lib.store import save
 from support import FIXED, LengthEmbedder as Embedder, open_corpus
@@ -237,7 +238,10 @@ def test_embed_creates_a_cosine_vector_index_above_500_rows(corpus, n, vector_in
     entries = tuple(Entry(id=f"polars:n{i}.md", source="polars", path=f"n{i}.md", title=f"T{i}") for i in range(n))
     save(corpus, index=replace(index, entries=entries))
     corpus.embeddings.embed(Embedder())
-    assert ("IvfPq" in [i.index_type for i in _db(corpus).open_table(TABLE_NAME).list_indices()]) is vector_index
+    table = _db(corpus).open_table(TABLE_NAME)
+    vector = [i.name for i in table.list_indices() if i.index_type == "IvfPq"]
+    assert bool(vector) is vector_index
+    assert all(table.index_stats(name).distance_type == "cosine" for name in vector)
 
 
 def test_meta_after_embed(corpus):
@@ -261,6 +265,19 @@ def test_meta_reads_the_legacy_meta_json(corpus):
     assert corpus.embeddings.meta().entry_count == 3 and (corpus.path / LANCE / "_meta.json").exists()
 
 
+@pytest.mark.parametrize("text, detail", [
+    ('{"model": "BAAI/bge-small-en', r"_meta.json: not JSON \(Unterminated string"),
+    ('["model"]', r"_meta.json: must be a JSON object"),
+    ('{"model": "m", "dimensions": "384.0", "generated_at": "2026-11-19T11:53:39+00:00"}',
+     r"`_meta.dimensions` is not a whole number: '384.0'"),
+])
+def test_a_malformed_legacy_meta_json_is_invalid_file(corpus, text, detail):  # design §4, P-4
+    (corpus.path / LANCE).mkdir()
+    (corpus.path / LANCE / "_meta.json").write_text(text)
+    with pytest.raises(InvalidFile, match=detail):
+        corpus.embeddings.meta()
+
+
 def test_embed_keeps_the_chunk_count_of_a_legacy_meta_json(corpus):  # EMB-4
     (corpus.path / LANCE).mkdir()
     (corpus.path / LANCE / "_meta.json").write_text(json.dumps({"model": "BAAI/bge-small-en-v1.5", "dimensions": 384,
@@ -274,3 +291,25 @@ def test_metadata_text_of_an_entry_without_concepts_ends_with_the_separator(corp
     save(corpus, index=replace(index, entries=(replace(index.entries[0], concepts=None), *index.entries[1:])))
     corpus.embeddings.embed(Embedder())
     assert next(r for r in _rows(corpus) if r["id"] == "polars:a.md")["metadata_text"] == "Expressions | Expressions in Polars. | expressions |"
+
+
+def test_the_default_embedder_loads_only_the_cached_model(corpus, tmp_path, monkeypatch):  # CMP-4
+    made = {}
+
+    class Vector(list):
+        def tolist(self):
+            return list(self)
+
+    class FakeEmbedding:
+        def __init__(self, **kwargs):
+            made.update(kwargs)
+
+        def embed(self, texts):
+            return (Vector([1.0] + [0.0] * (DIMENSIONS - 1)) for _ in texts)
+
+    fastembed = types.ModuleType("fastembed")
+    fastembed.TextEmbedding = FakeEmbedding
+    monkeypatch.setitem(sys.modules, "fastembed", fastembed)
+    _model(tmp_path)
+    corpus.embeddings.embed()
+    assert made == {"model_name": "BAAI/bge-small-en-v1.5", "local_files_only": True}
