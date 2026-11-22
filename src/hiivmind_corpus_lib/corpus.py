@@ -17,6 +17,7 @@ from .index import IndexCapability
 from .migration import MigrationCapability
 from .previews import PreviewsCapability
 from .render import RenderCapability
+from .search import SearchCapability
 from .sources import SourcesCapability
 from .status import StatusCapability
 from .tokens import TokensCapability
@@ -42,6 +43,7 @@ class Corpus:
         self.content = ContentCapability(self)
         self.previews = PreviewsCapability(self)
         self.embeddings = EmbeddingsCapability(self)
+        self.search = SearchCapability(self)
         self.status = StatusCapability(self)
         self.migration = MigrationCapability(self)
 
