@@ -1,4 +1,5 @@
-"""Pure PDF helpers: result types, Markdown emitters, cross-references, table rows, TeX math, outline chapters."""
+"""PDFs as data in and data out: reading, chapters and splitting with PyMuPDF (the `pdf` extra), and the pure helpers
+(result types, Markdown emitters, cross-references, table rows, TeX math)."""
 
 from .chapters import chapters, chapters_by_font, chapters_from_outline
 from .emit import (callout, chapter_markdown, code_block, dehyphenate, frontmatter, heading,

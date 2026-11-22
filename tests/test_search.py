@@ -11,7 +11,7 @@ pytest.importorskip("lancedb")
 from hiivmind_corpus_lib import embeddings as emb
 from hiivmind_corpus_lib.chunks import Chunk
 from hiivmind_corpus_lib.errors import ExtraMissing, ModelMismatch, NoEmbeddings, NoModel, NoTextIndex
-from hiivmind_corpus_lib.search import Mode
+from hiivmind_corpus_lib.search import Hit, Mode
 from support import TopicEmbedder, open_corpus
 
 E = TopicEmbedder  # topics: expressions->0, lazy->1, reading->2
@@ -231,3 +231,8 @@ def test_search_writes_nothing(corpus):
     before = sorted(p.name for p in (corpus.path / "index-embeddings.lance").rglob("*"))
     corpus.search.entries("lazy", mode=Mode.HYBRID, embedder=E())
     assert sorted(p.name for p in (corpus.path / "index-embeddings.lance").rglob("*")) == before
+
+
+def test_hits_are_values_a_set_can_hold():
+    a, b = Hit("x", 0.5, {"vector": [1.0]}), Hit("x", 0.5, {"vector": [1.0]})
+    assert a == b and len({a, b}) == 1

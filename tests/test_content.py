@@ -99,7 +99,7 @@ def test_a_file_with_undecodable_bytes_is_read_with_replacement(corpus):
 
 def test_the_corpus_counter_decides_the_tokens(corpus):  # CMP-5
     put(corpus, {"a.md": "## A\nx\n## B\ny\n"})
-    corpus.tokens = SimpleNamespace(count=lambda text: 999)
+    corpus.tokens = SimpleNamespace(counter=lambda: lambda text: 999)
     assert corpus.content.large_files("polars", max_tokens=500)[0].tokens == 999
     assert all(s.tokens == 999 for s in corpus.content.sections("polars", "a.md", min_tokens=0))
     assert len(corpus.content.chunks("polars", "a.md", Strategy.MARKDOWN, target_tokens=1, overlap_tokens=0)) > 1

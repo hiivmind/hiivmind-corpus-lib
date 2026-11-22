@@ -7,9 +7,9 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from enum import StrEnum
 
-from hiivmind_corpus_lib.markdown import headings
-from hiivmind_corpus_lib.sections import Count, sections
-from hiivmind_corpus_lib.tokens import count_tokens
+from .markdown import headings
+from .sections import Count, sections
+from .tokens import count_tokens
 
 
 class Strategy(StrEnum):

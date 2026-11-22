@@ -15,6 +15,7 @@ from .yamlio import dump_yaml, load_yaml
 
 if TYPE_CHECKING:
     from .corpus import Corpus
+    from .graph import Graph
 
 FILE = "index.yaml"
 Extra = tuple[tuple[str, Any], ...]
@@ -189,11 +190,11 @@ class IndexCapability:
     def stale_ids(self) -> tuple[str, ...]:
         return tuple(e.id for e in self.load().entries if e.stale is True and e.tier != "section")
 
-    def _save(self, index: Index) -> None:
+    def _save(self, index: Index, graph: Graph | None = None) -> None:
         from . import store
 
         meta = replace(index.meta or IndexMeta(), generated_at=self._corpus.now())
-        store.save(self._corpus, index=replace(index, meta=meta))
+        store.save(self._corpus, index=replace(index, meta=meta), graph=graph)
 
     def _set(self, values: Mapping[str, Any], field_name: str) -> tuple[str, ...]:
         """Set `field_name` of each entry named in `values`; the ids found. Saved only when an entry changed."""
@@ -278,10 +279,15 @@ class IndexCapability:
         return MergeResult(enriched=tuple(done), skipped=tuple(skipped))
 
     def thin_sections(self, min_tokens: int = 300, *, dry_run: bool = False) -> ThinResult:
+        """Merge small sections into a neighbor; a schema-1 graph's concepts follow each merged section."""
         from .thinning import thin
-        from .tokens import bound_count
 
-        thinned, result = thin(self.load(), min_tokens, bound_count(self._corpus.tokens))
+        thinned, result = thin(self.load(), min_tokens, self._corpus.tokens.counter())
         if result.merges and not dry_run:
-            self._save(thinned)
+            graph = None
+            if self._corpus.graph.exists():
+                loaded = self._corpus.graph._load()
+                merged = loaded.with_entries_merged({m.removed: m.into for m in result.merges})
+                graph = merged if merged != loaded else None
+            self._save(thinned, graph)
         return result

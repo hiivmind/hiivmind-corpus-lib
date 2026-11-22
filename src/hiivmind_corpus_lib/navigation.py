@@ -7,10 +7,11 @@ from dataclasses import dataclass
 from enum import StrEnum
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlsplit
 
 import yaml
 
-from hiivmind_corpus_lib.markdown import links
+from .markdown import links
 
 
 class NavFormat(StrEnum):
@@ -96,12 +97,20 @@ def _mkdocs(path: Path) -> tuple[NavItem, ...]:
     return _mkdocs_items(data.get("nav"), 0) if isinstance(data, dict) else ()
 
 
+def _file_of(target: str) -> str | None:
+    """The file a nav target names, without its anchor; None for an external URL or a bare anchor."""
+    parts = urlsplit(target)
+    return None if parts.scheme or parts.netloc else parts.path or None
+
+
 def _markdown_nav(path: Path, nav_file: str) -> tuple[NavItem, ...]:
     parent = posixpath.dirname(nav_file)
     roots: list[list[Any]] = []  # [title, path, level, children]
     stack: list[list[Any]] = []
     for link in links(path.read_text(encoding="utf-8", errors="replace")):
-        target = posixpath.normpath(posixpath.join(parent, link.target)) if link.target else None
+        target = link.target
+        if target and (file := _file_of(target)):  # relative to the nav file; anchor kept; external URL as written
+            target = posixpath.normpath(posixpath.join(parent, file)) + target[len(file):]
         node: list[Any] = [link.title, target, link.depth, []]
         while stack and stack[-1][2] >= link.depth:
             stack.pop()
@@ -179,8 +188,8 @@ def navigation_of(root: Path) -> Navigation:
             else:
                 hierarchy = _markdown_nav(path, name)
             if hierarchy:
-                paths = _count(hierarchy)
-                resolved = sum((root / p).exists() for p in paths)
+                files = [f for p in _count(hierarchy) if (f := _file_of(p))]
+                resolved = sum((root / f).exists() for f in files)
                 percent = round(resolved / total * 100, 1) if total else 0.0
-                return Navigation(True, name, fmt, hierarchy, Coverage(len(paths), resolved, len(paths) - resolved, total, percent))
+                return Navigation(True, name, fmt, hierarchy, Coverage(len(files), resolved, len(files) - resolved, total, percent))
     return Navigation(False, None, None, (), Coverage(0, 0, 0, total, 0.0))

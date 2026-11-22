@@ -5,8 +5,8 @@ from __future__ import annotations
 from collections.abc import Callable
 from dataclasses import dataclass
 
-from hiivmind_corpus_lib.markdown import headings, slug
-from hiivmind_corpus_lib.tokens import count_tokens
+from .markdown import headings, slug
+from .tokens import count_tokens
 
 Count = Callable[[str], int]
 

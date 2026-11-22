@@ -125,3 +125,12 @@ def test_a_latin1_navigation_file_does_not_raise(tmp_path):
     (tmp_path / "mkdocs.yml").unlink()
     (tmp_path / "_sidebar.md").write_bytes("- [Caf\xe9](cafe.md)\n".encode("latin-1"))
     assert navigation_of(tmp_path).hierarchy
+
+
+def test_external_links_are_kept_and_anchored_links_count_as_their_file(tmp_path):
+    nav = _nav(tmp_path / "a", {"src/SUMMARY.md": "- [Intro](intro.md#start)\n- [Site](https://example.com/a/b)\n- [Gone](gone.md)\n",
+                                "src/intro.md": "#"})
+    assert [n.path for n in nav.hierarchy] == ["src/intro.md#start", "https://example.com/a/b", "src/gone.md"]
+    assert nav.coverage == Coverage(2, 1, 1, 2, 50.0)
+    nav = _nav(tmp_path / "b", {"mkdocs.yml": "nav:\n  - Home: index.md\n  - GitHub: https://github.com/x\n", "index.md": "#"})
+    assert nav.coverage == Coverage(1, 1, 0, 1, 100.0)

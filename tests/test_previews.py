@@ -97,6 +97,6 @@ def test_previews_count_through_the_corpus_tokens(corpus):  # CMP-5
     from types import SimpleNamespace
 
     _put(corpus, "a.md", "some words here")
-    corpus.tokens = SimpleNamespace(count=lambda text: 42)
+    corpus.tokens = SimpleNamespace(counter=lambda: lambda text: 42)
     [preview] = corpus.previews.of(["polars:a.md"])
     assert preview.estimated_tokens == 42

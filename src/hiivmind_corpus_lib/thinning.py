@@ -17,8 +17,13 @@ def _start(entry: Entry) -> int:
     return entry.line_range[0] if entry.line_range else 0
 
 
+def _merged(first: tuple[str, ...] | None, second: tuple[str, ...] | None) -> tuple[str, ...] | None:
+    return tuple(dict.fromkeys((*(first or ()), *(second or ())))) or None
+
+
 def _absorb(target: Entry, section: Entry) -> Entry:
-    changes: dict = {"keywords": tuple(dict.fromkeys((*(target.keywords or ()), *(section.keywords or ())))) or None}
+    changes: dict = {"keywords": _merged(target.keywords, section.keywords),
+                     "concepts": _merged(target.concepts, section.concepts)}
     if target.line_range and section.line_range:
         changes["line_range"] = (target.line_range[0], max(target.line_range[-1], section.line_range[-1]))
     if section.summary:

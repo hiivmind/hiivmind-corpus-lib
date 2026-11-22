@@ -1,8 +1,11 @@
+from dataclasses import replace
+
 import pytest
 from support import FIXED, open_corpus
 from test_index_ops import put_index
 
 from hiivmind_corpus_lib import store
+from hiivmind_corpus_lib.graph import Graph
 from hiivmind_corpus_lib.index import Entry, Index, IndexMeta, Merge, ThinResult
 from hiivmind_corpus_lib.thinning import thin
 
@@ -134,7 +137,7 @@ def test_thin_sections_saves_through_store_save(corpus, monkeypatch):
     real = store.save
     monkeypatch.setattr(store, "save", lambda *a, **k: calls.append(k) or real(*a, **k))
     result = corpus.index.thin_sections(min_tokens=100)
-    assert len(calls) == 1 and set(calls[0]) == {"index"}
+    assert len(calls) == 1 and calls[0]["graph"] is None  # the golden graph is schema 2: nothing in it names an entry
     saved = corpus.index.load()
     assert [e.id for e in saved.entries] == ["polars:guide.md", "polars:guide.md#methods"]
     assert saved.meta.entry_count == 2 and saved.meta.generated_at == FIXED
@@ -163,5 +166,29 @@ def test_thin_sections_counts_through_the_corpus_tokenizer(corpus):
     from types import SimpleNamespace
 
     assert corpus.index.thin_sections(min_tokens=100, dry_run=True).merges  # the word estimate merges the short ones
-    corpus.tokens = SimpleNamespace(count=lambda text: 999)
+    corpus.tokens = SimpleNamespace(counter=lambda: lambda text: 999)
     assert corpus.index.thin_sections(min_tokens=100, dry_run=True).merges == ()
+
+
+def test_a_merged_section_hands_its_concepts_to_the_target():
+    small = replace(sec("src:a.md#s2", "src:a.md", 2, (11, 12)), concepts=("lazy", "io"))
+    index = ix(file("src:a.md"), replace(sec("src:a.md#s1", "src:a.md", 2, (1, 10), BIG), concepts=("io",)), small)
+    thinned, _ = thin(index, min_tokens=100)
+    assert thinned.entries[1].concepts == ("io", "lazy")
+
+
+def test_a_schema_1_graph_names_the_entry_each_section_went_into(corpus):
+    (corpus.path / "graph.yaml").write_text(
+        "schema_version: 1\nconcepts:\n  api:\n    label: API\n    description: d\n    entries:\n"
+        "      - polars:guide.md#params\n      - polars:guide.md#methods\n      - polars:guide.md#extra\n    entry_count: 3\n"
+        "  args:\n    label: Args\n    description: d\n    entries:\n      - polars:guide.md#extra\n    entry_count: 1\n",
+        encoding="utf-8")
+    corpus.index.thin_sections(min_tokens=100)
+    concepts = Graph.loads((corpus.path / "graph.yaml").read_text(encoding="utf-8")).concepts
+    assert (concepts["api"].entries, concepts["api"].entry_count) == (("polars:guide.md#methods",), 1)
+    assert (concepts["args"].entries, concepts["args"].entry_count) == (("polars:guide.md#methods",), 1)
+
+
+def test_a_section_merged_into_one_later_merged_follows_it_to_the_end():
+    graph = Graph.loads("schema_version: 1\nconcepts:\n  c:\n    label: C\n    description: d\n    entries: [a, b]\n")
+    assert graph.with_entries_merged({"a": "b", "b": "c"}).concepts["c"].entries == ("c",)

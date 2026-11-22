@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import importlib.util
 from collections.abc import Callable, Mapping, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import StrEnum
 from types import MappingProxyType
 from typing import TYPE_CHECKING, Any
@@ -32,24 +32,16 @@ class Mode(StrEnum):
 class Hit:
     id: str
     score: float
-    fields: Mapping[str, Any]
+    fields: Mapping[str, Any] = field(hash=False)
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "fields", MappingProxyType(dict(self.fields)))
 
 
-def _reranker_cached() -> bool:
-    try:
-        repos = [p for p in emb._cache_dir().iterdir() if p.name.lower() == RERANK_REPO_DIR]
-    except OSError:
-        return False
-    return any(next((repo / "snapshots").glob(f"*/{RERANK_FILE}"), None) is not None for repo in repos)
-
-
 def _default_reranker() -> Reranker:
     """The cached cross-encoder; never downloads."""
-    if not _reranker_cached():
-        raise NoModel(f"the model {RERANK_MODEL} is not in the fastembed cache {emb._cache_dir()}; nothing was downloaded")
+    if emb.cached_file(RERANK_FILE, RERANK_REPO_DIR) is None:
+        raise NoModel(f"the model {RERANK_MODEL} is not in the fastembed cache {emb.cache_dir()}; nothing was downloaded")
     if importlib.util.find_spec("fastembed") is None:
         raise ExtraMissing(f"the embeddings extra is not installed: {emb.EXTRA_HINT}")
     from fastembed.rerank.cross_encoder import TextCrossEncoder

@@ -74,15 +74,15 @@ class EmbeddingsMeta:
     chunk_count: int | None
 
 
-def _cache_dir() -> Path:
+def cache_dir() -> Path:
     given = os.environ.get("FASTEMBED_CACHE_PATH")
     return Path(given) if given else Path(tempfile.gettempdir()) / "fastembed_cache"
 
 
-def _cached_file(name: str) -> Path | None:
+def cached_file(name: str, repo_dir: str = MODEL_REPO_DIR) -> Path | None:
     """The first `<cache>/<repo dir>/snapshots/*/<name>`. Creates nothing: fastembed's own lookup would create the directory."""
     try:
-        repos = [p for p in _cache_dir().iterdir() if p.name.lower() == MODEL_REPO_DIR]
+        repos = [p for p in cache_dir().iterdir() if p.name.lower() == repo_dir]
     except OSError:
         return None
     for repo in repos:
@@ -92,7 +92,7 @@ def _cached_file(name: str) -> Path | None:
 
 
 def _model_cached() -> bool:
-    return _cached_file(MODEL_FILE) is not None
+    return cached_file(MODEL_FILE) is not None
 
 
 TOKENIZER_FILE = "tokenizer.json"
@@ -102,7 +102,7 @@ def cached_tokenizer_file() -> Path | None:
     """The model's tokenizer file, only when the extras are importable and the model itself is cached."""
     if find_spec("fastembed") is None or find_spec("tokenizers") is None or not _model_cached():
         return None
-    return _cached_file(TOKENIZER_FILE)
+    return cached_file(TOKENIZER_FILE)
 
 
 def _text_of(entry) -> str:
@@ -141,7 +141,7 @@ def resolve_embedder(embedder: Embedder | None) -> Embedder:
     if embedder is not None:
         return embedder
     if not _model_cached():
-        raise NoModel(f"the model {MODEL_NAME} is not in the fastembed cache {_cache_dir()}; nothing was downloaded")
+        raise NoModel(f"the model {MODEL_NAME} is not in the fastembed cache {cache_dir()}; nothing was downloaded")
     return _default_embedder()
 
 

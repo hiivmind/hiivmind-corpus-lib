@@ -7,12 +7,11 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 from .chunks import chunks as _chunks
-from .sections import sections as _sections
 from .errors import InvalidFile
 from .markdown import headings
 from .navigation import Coverage, Navigation, markdown_files, navigation_of
+from .sections import sections as _sections
 from .sources import kind_of
-from .tokens import bound_count
 
 if TYPE_CHECKING:
     from .chunks import Chunk, Strategy
@@ -52,7 +51,7 @@ class ContentCapability:
         root = self._root(source_id)
         if root is None:
             return ()
-        count = bound_count(self._corpus.tokens)
+        count = self._corpus.tokens.counter()
         found = []
         for rel in markdown_files(root):
             try:
@@ -81,9 +80,9 @@ class ContentCapability:
             raise refusal from None
 
     def sections(self, source_id: str, path: str, **options: Any) -> tuple[Section, ...]:
-        options.setdefault("count", bound_count(self._corpus.tokens))
+        options.setdefault("count", self._corpus.tokens.counter())
         return _sections(self._text(source_id, path), **options)
 
     def chunks(self, source_id: str, path: str, strategy: Strategy, **options: Any) -> tuple[Chunk, ...]:
-        options.setdefault("count", bound_count(self._corpus.tokens))
+        options.setdefault("count", self._corpus.tokens.counter())
         return _chunks(self._text(source_id, path), strategy, **options)
