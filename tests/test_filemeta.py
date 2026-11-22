@@ -55,3 +55,8 @@ def test_a_missing_file_raises_file_not_found(tmp_path):
 def test_slug():
     assert slug("Window Functions & `over()`") == "window-functions-over"
     assert slug("  --  ") == ""
+
+
+def test_headings_come_from_the_markdown_parser_so_indented_code_is_skipped(tmp_path):  # CMP-5, SEC-1
+    meta = file_metadata(_write(tmp_path, "i.md", "# One\n\n    # code\n\n## Two\n"))
+    assert [h.title for h in meta.headings] == ["One", "Two"]
