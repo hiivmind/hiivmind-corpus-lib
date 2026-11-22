@@ -7,13 +7,13 @@ The `hiivmind_corpus_lib` Python package (distribution `hiivmind-corpus-lib`). I
 ## Development
 
 ```bash
-uv sync                      # base dependencies; dev group: pytest, lancedb, pyarrow, tokenizers, pymupdf
-uv run pytest -q             # no network, no git, no model
-uv sync --extra embeddings   # the embeddings extra (fastembed, lancedb, pyarrow)
-uv sync --extra pdf         # the pdf extra (pymupdf)
+hatch run test_github:test    # the base install: tests that need an extra skip
+hatch run test_extras:test    # every extra installed: the whole suite runs
+hatch run ruff:check
+hatch run mypy:check
 ```
 
-Python 3.12 or later. Run one pytest process at a time.
+Python 3.12 or later. No test touches the network, runs `git` or downloads a model. [TESTING.md](TESTING.md) has every environment and command; [hatch.toml](hatch.toml) owns them, [pyproject.toml](pyproject.toml) the package and its dependencies.
 
 ## Using it
 
@@ -211,7 +211,7 @@ All derive from `CorpusError`. Not errors: `status.report` with no observation f
 
 ## The embeddings extra
 
-`uv sync --extra embeddings` installs `fastembed`, `lancedb` (0.23.0 or later) and `pyarrow`. They are imported only when an embeddings operation runs; `import hiivmind_corpus_lib` imports none of them.
+The `embeddings` extra (`hiivmind-corpus-lib[embeddings]`) installs `fastembed`, `lancedb` (0.23.0 or later) and `pyarrow`. They are imported only when an embeddings operation runs; `import hiivmind_corpus_lib` imports none of them.
 
 ```python
 corpus.embeddings.status()   # "absent" | "not-installed" | "no-model" | "ready"

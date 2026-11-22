@@ -1,0 +1,97 @@
+[version]
+path = "src/hiivmind_corpus_lib/__version__.py"
+
+[build.targets.wheel]
+packages = ["src/hiivmind_corpus_lib"]
+
+[build.targets.sdist]
+include = ["/src", "/pyproject.toml", "/hatch.toml", "/README.md"]
+
+# Each environment below sets `template` to its own name (or test_github's), so none inherits the default
+# environment's extras: test_github must be the base install.
+
+#================
+# Env: default
+#================
+# Local development: every extra, and the tokenizer the token counter uses when the model is cached.
+[envs.default]
+installer = "uv"
+path = ".venv"
+features = ["embeddings", "pdf"]
+dependencies = ["tokenizers"]
+
+#================
+# Env: test_github
+#================
+# The base install: no extra. Tests that need one are skipped.
+[[envs.test_github.matrix]]
+python = ["3.12"]
+
+[envs.test_github]
+template = "test_github"
+installer = "uv"
+dependencies = [
+    "pytest==8.3.5",
+    "pytest-cov==6.1.1",
+]
+[envs.test_github.scripts]
+test = "pytest {args}"
+test-cov = "pytest --cov --cov-config={root}/pyproject.toml --cov-report=term-missing {args}"
+
+#================
+# Env: test_extras
+#================
+# Every extra, and the tokenizer: the tests test_github skips run here. No model is ever downloaded.
+[[envs.test_extras.matrix]]
+python = ["3.12"]
+
+[envs.test_extras]
+template = "test_github"
+features = ["embeddings", "pdf"]
+extra-dependencies = ["tokenizers"]
+
+#================
+# Env: ruff
+#================
+[envs.ruff]
+template = "ruff"
+installer = "uv"
+skip-install = true
+dependencies = ["ruff==0.3.7"]
+[envs.ruff.scripts]
+check = "ruff check ./src"
+fix = "ruff check ./src --fix"
+
+#================
+# Env: radon
+#================
+# Radon Complexity Checks
+[envs.radon]
+template = "radon"
+installer = "uv"
+skip-install = true
+dependencies = ["radon==6.0.1"]
+[envs.radon.scripts]
+radon-cc = "radon cc ./src -nd"
+radon-mi = "radon mi ./src -nd"
+radon-cc-strict = "radon cc ./src -nc"
+radon-mi-strict = "radon mi ./src -nc"
+radon-mi-detail = "radon mi ./src"
+radon-cc-detail = "radon cc ./src"
+
+#================
+# Env: mypy
+#================
+# The extras are installed so their imports are checked; pytest so the tests are.
+[envs.mypy]
+template = "mypy"
+installer = "uv"
+features = ["embeddings", "pdf"]
+dependencies = [
+    "mypy==1.10.1",
+    "pytest==8.3.5",
+    "tokenizers",
+    "types-PyYAML==6.0.12.20260906",
+]
+[envs.mypy.scripts]
+check = "mypy --warn-unused-ignores {args:src/hiivmind_corpus_lib tests}"
