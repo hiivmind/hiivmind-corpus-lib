@@ -279,8 +279,9 @@ class IndexCapability:
 
     def thin_sections(self, min_tokens: int = 300, *, dry_run: bool = False) -> ThinResult:
         from .thinning import thin
+        from .tokens import bound_count
 
-        thinned, result = thin(self.load(), min_tokens)
+        thinned, result = thin(self.load(), min_tokens, bound_count(self._corpus.tokens))
         if result.merges and not dry_run:
             self._save(thinned)
         return result

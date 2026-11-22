@@ -117,3 +117,11 @@ def test_a_navigation_file_that_is_not_yaml_yields_no_entries_and_the_next_one_i
 def test_markdown_files_are_md_and_mdx_sorted(tmp_path):  # NAV-3, LRG-1 (the shared rule)
     write_tree(tmp_path, {"b.md": "#", "a.mdx": "#", "docs/c.md": "#", "x.txt": "x"})
     assert markdown_files(tmp_path) == ("a.mdx", "b.md", "docs/c.md")
+
+
+def test_a_latin1_navigation_file_does_not_raise(tmp_path):
+    (tmp_path / "mkdocs.yml").write_bytes("nav:\n  - Caf\xe9: cafe.md\n".encode("latin-1"))
+    assert [n.path for n in navigation_of(tmp_path).hierarchy] == ["cafe.md"]
+    (tmp_path / "mkdocs.yml").unlink()
+    (tmp_path / "_sidebar.md").write_bytes("- [Caf\xe9](cafe.md)\n".encode("latin-1"))
+    assert navigation_of(tmp_path).hierarchy

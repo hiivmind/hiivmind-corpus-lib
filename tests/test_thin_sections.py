@@ -157,3 +157,11 @@ def test_nothing_to_merge_writes_nothing(corpus, monkeypatch):
 
 def test_default_min_tokens_is_300(corpus):
     assert corpus.index.thin_sections(dry_run=True).merges
+
+
+def test_thin_sections_counts_through_the_corpus_tokenizer(corpus):
+    from types import SimpleNamespace
+
+    assert corpus.index.thin_sections(min_tokens=100, dry_run=True).merges  # the word estimate merges the short ones
+    corpus.tokens = SimpleNamespace(count=lambda text: 999)
+    assert corpus.index.thin_sections(min_tokens=100, dry_run=True).merges == ()

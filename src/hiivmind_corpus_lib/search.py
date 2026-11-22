@@ -85,7 +85,7 @@ class SearchCapability:
             raise NoEmbeddings(no_table)
         lancedb, _ = emb.require_lance(fastembed=embedder is None)
         db = lancedb.connect(str(directory))
-        if table_name not in db.table_names():
+        if table_name not in db.list_tables().tables:
             raise NoEmbeddings(no_table)
         meta = corpus.embeddings.meta()
         if meta is not None and meta.model != MODEL_NAME:

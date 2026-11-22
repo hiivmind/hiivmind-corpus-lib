@@ -12,6 +12,7 @@ from .errors import InvalidFile
 from .markdown import headings
 from .navigation import Coverage, Navigation, markdown_files, navigation_of
 from .sources import kind_of
+from .tokens import bound_count
 
 if TYPE_CHECKING:
     from .chunks import Chunk, Strategy
@@ -51,13 +52,14 @@ class ContentCapability:
         root = self._root(source_id)
         if root is None:
             return ()
+        count = bound_count(self._corpus.tokens)
         found = []
         for rel in markdown_files(root):
             try:
                 text = (root / rel).read_text(encoding="utf-8", errors="replace")
             except OSError:
                 continue
-            tokens = self._corpus.tokens.count(text)
+            tokens = count(text)
             if tokens <= max_tokens:
                 continue
             levels = [h.level for h in headings(text)]
@@ -79,9 +81,9 @@ class ContentCapability:
             raise refusal from None
 
     def sections(self, source_id: str, path: str, **options: Any) -> tuple[Section, ...]:
-        options.setdefault("count", self._corpus.tokens.count)
+        options.setdefault("count", bound_count(self._corpus.tokens))
         return _sections(self._text(source_id, path), **options)
 
     def chunks(self, source_id: str, path: str, strategy: Strategy, **options: Any) -> tuple[Chunk, ...]:
-        options.setdefault("count", self._corpus.tokens.count)
+        options.setdefault("count", bound_count(self._corpus.tokens))
         return _chunks(self._text(source_id, path), strategy, **options)

@@ -96,7 +96,7 @@ def _split(
         return []
     if count("\n".join(lines[lo:hi])) <= _ONE_CHUNK_FACTOR * target:
         return [(lo, hi)]
-    cost = [1 if _blank(line) else count(line) for line in lines]
+    cost = {i: 1 if _blank(lines[i]) else count(lines[i]) for i in range(lo, hi)}
     result: list[tuple[int, int]] = []
     split, previous_start = lo, None
     while split < hi:

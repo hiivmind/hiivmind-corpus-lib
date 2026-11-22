@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import math
+from collections.abc import Callable
 from enum import StrEnum
 from fractions import Fraction
 from functools import lru_cache
@@ -66,3 +67,11 @@ class TokensCapability:
 
     def count(self, text: str) -> int:
         return count_tokens(text, self.tokenizer)
+
+
+def bound_count(tokens: object) -> Callable[[str], int]:
+    """A counter with the tokenizer resolved once; any other `.count` provider is used as given."""
+    if isinstance(tokens, TokensCapability):
+        tokenizer = tokens.tokenizer
+        return lambda text: count_tokens(text, tokenizer)
+    return tokens.count  # type: ignore[attr-defined]

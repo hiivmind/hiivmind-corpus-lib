@@ -275,6 +275,8 @@ class EmbeddingsCapability:
         """Replace the chunk rows of each given (source, path); other files' rows stay. Unchanged chunks keep their vectors."""
         lancedb, pa = self._require(fastembed=embedder is None)
         embedder = resolve_embedder(embedder)
+        if not any(chunks.values()) and not self._dir.is_dir():
+            return ChunkEmbedResult(len(chunks), 0, 0, 0)
         db = lancedb.connect(str(self._dir))
         index = self._corpus.index.load()
         now = stamp(self._corpus.now())

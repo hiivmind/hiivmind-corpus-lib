@@ -72,7 +72,7 @@ def markdown_files(root: Path) -> tuple[str, ...]:
 
 def _load_yaml(path: Path) -> Any:
     try:
-        return yaml.load(path.read_text(encoding="utf-8"), Loader=_Loader)  # noqa: S506 - SafeLoader subclass
+        return yaml.load(path.read_text(encoding="utf-8", errors="replace"), Loader=_Loader)  # noqa: S506 - SafeLoader subclass
     except yaml.YAMLError:
         return None
 
@@ -100,7 +100,7 @@ def _markdown_nav(path: Path, nav_file: str) -> tuple[NavItem, ...]:
     parent = posixpath.dirname(nav_file)
     roots: list[list[Any]] = []  # [title, path, level, children]
     stack: list[list[Any]] = []
-    for link in links(path.read_text(encoding="utf-8")):
+    for link in links(path.read_text(encoding="utf-8", errors="replace")):
         target = posixpath.normpath(posixpath.join(parent, link.target)) if link.target else None
         node: list[Any] = [link.title, target, link.depth, []]
         while stack and stack[-1][2] >= link.depth:

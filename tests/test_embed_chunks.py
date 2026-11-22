@@ -142,3 +142,9 @@ def test_embed_chunks_without_the_model_or_the_extra(corpus, monkeypatch):  # P-
     monkeypatch.setitem(sys.modules, "lancedb", None)
     with pytest.raises(ExtraMissing):
         corpus.embeddings.embed_chunks({("polars", "a.md"): [ch(0, "A0", 1, 2)]}, LengthEmbedder())
+
+
+def test_embed_chunks_with_nothing_to_write_creates_no_lance_directory(corpus):
+    assert corpus.embeddings.embed_chunks({}, LengthEmbedder()) == ChunkEmbedResult(0, 0, 0, 0)
+    assert corpus.embeddings.embed_chunks({("polars", "a.md"): []}, LengthEmbedder()).total == 0
+    assert not (corpus.path / LANCE).exists()

@@ -123,9 +123,9 @@ The writes are one atomic set with rollback.
 from hiivmind_corpus_lib import count_tokens, headings, links
 corpus.tokens.count("some text")      # an int: the cached embedding tokenizer if there is one, else ceil(words * 1.3)
 corpus.tokens.method                  # TokenMethod.WORDS or TokenMethod.TOKENIZER
-count_tokens("some text")             # 4 (the word estimate; pass a `Tokenizer` as the second argument to use one)
+count_tokens("some text")             # 3 (the word estimate; pass a `Tokenizer` as the second argument to use one)
 headings("# A\n\n## B\n")             # (HeadingLine(level=1, title="A", line=1), HeadingLine(level=2, title="B", line=3))
-links("- [Intro](intro.md)\n")        # (Link(title="Intro", target="intro.md", depth=1),)
+links("- [Intro](intro.md)\n")        # (Link(title="Intro", target="intro.md", depth=0),)
 ```
 
 ### sections and chunks
