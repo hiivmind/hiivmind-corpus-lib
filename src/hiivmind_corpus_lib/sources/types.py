@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from enum import StrEnum
 from pathlib import Path
-from typing import Any, ClassVar, Protocol
+from typing import Any, ClassVar, Protocol, TypeVar
 
 from ..errors import InvalidChanges
 from ..schema import mapping
@@ -143,21 +143,27 @@ class UnrecognisedSource:
     raw: Mapping[str, Any]
 
 
-class SourceKind(Protocol):
+S = TypeVar("S", bound=Source)
+
+
+class SourceKind(Protocol[S]):
+    """One kind of source; `S` is the `Source` subclass it parses and reads."""
+
     type: str
 
-    def parse(self, raw: Mapping, where: str = "source") -> Source: ...
-    def dump(self, source: Source) -> dict: ...
-    def locate(self, source: Source, corpus: Any, rel_path: str) -> Location: ...
-    def freshness(self, source: Source, observation: Observation | None, now: datetime) -> Freshness: ...
-    def recorded(self, source: Source, observation: Observation | None, now: datetime) -> Source: ...
+    def parse(self, raw: Mapping, where: str = "source") -> S: ...
+    def dump(self, source: S) -> dict: ...
+    def locate(self, source: S, corpus: Any, rel_path: str) -> Location: ...
+    def freshness(self, source: S, observation: Observation | None, now: datetime) -> Freshness: ...
+    def recorded(self, source: S, observation: Observation | None, now: datetime) -> S: ...
 
 
 # Filled by the kinds' package (`sources/__init__.py`); insertion order is `Corpus.sources.kinds`.
-SOURCE_KINDS: dict[str, SourceKind] = {}
+# Keyed by `Source.type`, so each kind meets only sources of its own subclass: the pairing is by key, not by type.
+SOURCE_KINDS: dict[str, SourceKind[Any]] = {}
 
 
-def kind_of(source: Source | UnrecognisedSource) -> SourceKind | None:
+def kind_of(source: Source | UnrecognisedSource) -> SourceKind[Any] | None:
     if isinstance(source, Source):
         return SOURCE_KINDS.get(source.type)
     return None

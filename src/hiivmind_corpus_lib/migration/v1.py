@@ -63,7 +63,7 @@ def parse_v1_line(line: str, source_ids: list[str], extensions: tuple[str, ...])
     cells = _cells(line)
     if cells is None or len(source_ids) != 1:
         return None
-    paths = [path for cell in cells if (path := _cell_path(cell, extensions))]
+    paths = [found for cell in cells if (found := _cell_path(cell, extensions))]
     if len(paths) != 1:
         return None
     named = _id_of(paths[0], source_ids)
@@ -140,8 +140,8 @@ def _sections(corpus: Path, main: str, subs: list[Path]) -> list[dict]:
     for slug in slugs:
         linking = [(h, lines) for h, lines in _blocks_by_heading(main) if h and any(f"index-{slug}.md" in line for line in lines)]
         heading, lines = linking[-1] if linking else ("", [])
-        h1 = next((l[2:].strip() for l in (corpus / f"index-{slug}.md").read_text().splitlines() if l.startswith("# ")), "")
-        italic = next((l.strip()[1:-1] for l in lines if re.fullmatch(r"\*[^*].*[^*]\*", l.strip())), "")
+        h1 = next((text[2:].strip() for text in (corpus / f"index-{slug}.md").read_text().splitlines() if text.startswith("# ")), "")
+        italic = next((text.strip()[1:-1] for text in lines if re.fullmatch(r"\*[^*].*[^*]\*", text.strip())), "")
         sections.append({"id": slug, "title": DETAILED.sub("", h1) or heading or slug, "description": italic})
     return sections
 

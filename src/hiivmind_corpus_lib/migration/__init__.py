@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-from ..config import Config, Render, RenderSection
+from ..config import Render, RenderSection
 from ..errors import MigrationRefused, Refusal
 from ..filemeta import slug
 from ..index import FILE as INDEX_FILE

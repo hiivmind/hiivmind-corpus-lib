@@ -56,35 +56,35 @@ def _scorer(strategy: Strategy, text: str) -> tuple[Callable[[int, str], int], C
     if strategy in (Strategy.MARKDOWN, Strategy.HEADINGS):
         heading_lines = {h.line - 1 for h in headings(text)}
 
-        def score(i: int, line: str) -> int:
+        def markdown_score(i: int, line: str) -> int:
             if i in heading_lines:
                 return _HEADING_SCORE
             if _blank(line):
                 return _BLANK_SCORE
             return _LIST_SCORE if _LIST.match(line) else 0
 
-        return score, lambda i, line: i in heading_lines
+        return markdown_score, lambda i, line: i in heading_lines
     if strategy is Strategy.TRANSCRIPT:
-        def score(i: int, line: str) -> int:
+        def transcript_score(i: int, line: str) -> int:
             if _SPEAKER.match(line):
                 return _SPEAKER_SCORE
             if _TIMESTAMP.match(line):
                 return _TIMESTAMP_SCORE
             return _BLANK_SCORE if _blank(line) else 0
 
-        return score, lambda i, line: bool(_SPEAKER.match(line) or _TIMESTAMP.match(line))
+        return transcript_score, lambda i, line: bool(_SPEAKER.match(line) or _TIMESTAMP.match(line))
     if strategy is Strategy.CODE:
-        def score(i: int, line: str) -> int:
+        def code_score(i: int, line: str) -> int:
             if _CODE.match(line):
                 return _CODE_SCORE
             return _BLANK_SCORE if _blank(line) else 0
 
-        return score, lambda i, line: bool(_CODE.match(line))
+        return code_score, lambda i, line: bool(_CODE.match(line))
 
-    def score(i: int, line: str) -> int:
+    def paragraph_score(i: int, line: str) -> int:
         return _PARAGRAPH_BLANK_SCORE if _blank(line) else _PARAGRAPH_LINE_SCORE
 
-    return score, lambda i, line: False
+    return paragraph_score, lambda i, line: False
 
 
 def _split(
@@ -159,11 +159,11 @@ def chunks(
             while stack and stack[-1][0] >= s.level:
                 stack.pop()
             stack.append((s.level, s.title))
-            context = " > ".join(title for _, title in stack)
+            trail = " > ".join(title for _, title in stack)
             if s.tokens <= target:
-                ranges.append((s.line_start - 1, s.line_end, context))
+                ranges.append((s.line_start - 1, s.line_end, trail))
             else:
-                ranges += [(a, b, context) for a, b in pieces(s.line_start - 1, s.line_end)]
+                ranges += [(a, b, trail) for a, b in pieces(s.line_start - 1, s.line_end)]
     else:
         ranges = [(a, b, None) for a, b in pieces(0, len(lines))]
 
