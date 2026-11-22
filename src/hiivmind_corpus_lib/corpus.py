@@ -9,6 +9,7 @@ from os import PathLike
 from pathlib import Path
 
 from .config import FILE, ConfigCapability
+from .content import ContentCapability
 from .embeddings import EmbeddingsCapability
 from .errors import NotACorpus
 from .graph import GraphCapability
@@ -38,6 +39,7 @@ class Corpus:
         self.render = RenderCapability(self)
         self.sources = SourcesCapability(self)
         self.tokens = TokensCapability(self)
+        self.content = ContentCapability(self)
         self.previews = PreviewsCapability(self)
         self.embeddings = EmbeddingsCapability(self)
         self.status = StatusCapability(self)

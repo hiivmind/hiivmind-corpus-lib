@@ -7,7 +7,7 @@ from datetime import datetime
 from typing import TYPE_CHECKING, Any
 
 from . import schema
-from .errors import InvalidFile
+from .errors import InvalidFile, NoSuchSource
 from .schema import _found
 from .sources import SOURCE_KINDS, Source, UnrecognisedSource
 from .yamlio import dump_yaml, load_yaml
@@ -96,6 +96,12 @@ class Config:
         if self.sources:
             body["sources"] = [_dump_source(s) for s in self.sources]
         return dump_yaml(body)
+
+    def source(self, source_id: str) -> Source | UnrecognisedSource:
+        found = next((s for s in self.sources if s.id == source_id), None)
+        if found is None:
+            raise NoSuchSource(f"config.yaml has no source `{source_id}`")
+        return found
 
 
 def _with_sources(config: Config, sources: tuple) -> Config:
