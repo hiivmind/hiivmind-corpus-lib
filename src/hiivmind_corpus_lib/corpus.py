@@ -18,6 +18,7 @@ from .previews import PreviewsCapability
 from .render import RenderCapability
 from .sources import SourcesCapability
 from .status import StatusCapability
+from .tokens import TokensCapability
 
 PLACEHOLDER = "Run hiivmind-corpus-build"
 
@@ -36,6 +37,7 @@ class Corpus:
         self.graph = GraphCapability(self)
         self.render = RenderCapability(self)
         self.sources = SourcesCapability(self)
+        self.tokens = TokensCapability(self)
         self.previews = PreviewsCapability(self)
         self.embeddings = EmbeddingsCapability(self)
         self.status = StatusCapability(self)

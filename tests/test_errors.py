@@ -1,12 +1,13 @@
 import pytest
 
-from hiivmind_corpus_lib.errors import (CorpusError, ExtraMissing, InvalidChanges, InvalidFile, MigrationRefused, NoModel,
-                                    NoSuchEntry, NoSuchSource, NotACorpus, Refusal, WriteFailed)
+from hiivmind_corpus_lib.errors import (CorpusError, ExtraMissing, InvalidChanges, InvalidFile, MigrationRefused, ModelMismatch,
+                                    NoEmbeddings, NoModel, NoSuchEntry, NoTextIndex, NoSuchSource, NotACorpus, Refusal, WriteFailed)
 
 
 @pytest.mark.parametrize("cls, code", [
     (NotACorpus, "not-a-corpus"), (NoSuchSource, "unknown-source"), (NoSuchEntry, "unknown-entry"),
-    (InvalidChanges, "invalid-changes"), (NoModel, "no-model"), (ExtraMissing, "extra-missing")])
+    (InvalidChanges, "invalid-changes"), (NoModel, "no-model"), (ExtraMissing, "extra-missing"),
+    (NoEmbeddings, "no-embeddings"), (ModelMismatch, "model-mismatch"), (NoTextIndex, "no-text-index")])
 def test_simple_errors_have_their_code(cls, code):
     assert issubclass(cls, CorpusError) and cls.code == code and cls("x").code == code
 

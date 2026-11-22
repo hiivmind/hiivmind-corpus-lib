@@ -2,15 +2,14 @@
 
 from __future__ import annotations
 
-import math
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
+from .tokens import TOKENS_PER_WORD
+
 if TYPE_CHECKING:
     from .corpus import Corpus
-
-TOKENS_PER_WORD = 1.3
 
 
 @dataclass(frozen=True)
@@ -43,7 +42,7 @@ class PreviewsCapability:
                 if len(words) > limit:
                     words = words[:limit]
                     text = " ".join(words)
-                content, tokens = text, math.ceil(len(words) * TOKENS_PER_WORD)
+                content, tokens = text, self._corpus.tokens.count(text)
             out.append(Preview(entry.id, entry.title, entry.summary, entry.path, content, tokens))
         return tuple(out)
 

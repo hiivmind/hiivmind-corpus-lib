@@ -64,3 +64,15 @@ class WriteFailed(CorpusError):
         self.restored = restored
         self.unrestored = unrestored
         self.cause = cause
+
+
+class NoEmbeddings(CorpusError):
+    code = "no-embeddings"
+
+
+class ModelMismatch(CorpusError):
+    code = "model-mismatch"
+
+
+class NoTextIndex(CorpusError):
+    code = "no-text-index"

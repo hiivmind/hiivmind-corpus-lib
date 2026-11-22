@@ -55,13 +55,30 @@ def _cache_dir() -> Path:
     return Path(given) if given else Path(tempfile.gettempdir()) / "fastembed_cache"
 
 
-def _model_cached() -> bool:
-    """Whether fastembed's cache holds the model. Creates nothing: fastembed's own lookup would create the directory."""
+def _cached_file(name: str) -> Path | None:
+    """The first `<cache>/<repo dir>/snapshots/*/<name>`. Creates nothing: fastembed's own lookup would create the directory."""
     try:
         repos = [p for p in _cache_dir().iterdir() if p.name.lower() == MODEL_REPO_DIR]
     except OSError:
-        return False
-    return any(any((repo / "snapshots").glob(f"*/{MODEL_FILE}")) for repo in repos)
+        return None
+    for repo in repos:
+        for found in (repo / "snapshots").glob(f"*/{name}"):
+            return found
+    return None
+
+
+def _model_cached() -> bool:
+    return _cached_file(MODEL_FILE) is not None
+
+
+TOKENIZER_FILE = "tokenizer.json"
+
+
+def cached_tokenizer_file() -> Path | None:
+    """The model's tokenizer file, only when the extras are importable and the model itself is cached."""
+    if find_spec("fastembed") is None or find_spec("tokenizers") is None or not _model_cached():
+        return None
+    return _cached_file(TOKENIZER_FILE)
 
 
 def _text_of(entry) -> str:
