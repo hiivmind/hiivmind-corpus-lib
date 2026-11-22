@@ -4,8 +4,8 @@ from pathlib import Path
 
 import pytest
 
-from hiivmind_corpus.errors import InvalidFile
-from hiivmind_corpus.sources import (
+from hiivmind_corpus_lib.errors import InvalidFile
+from hiivmind_corpus_lib.sources import (
     SOURCE_KINDS,
     Freshness,
     GitKind,

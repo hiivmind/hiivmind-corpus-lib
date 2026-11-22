@@ -7,9 +7,9 @@ from pathlib import Path
 import pytest
 from support import corpus_dir, golden, open_corpus
 
-from hiivmind_corpus.errors import InvalidFile
-from hiivmind_corpus.graph import Graph, GraphReport, Issue
-from hiivmind_corpus.index import Index
+from hiivmind_corpus_lib.errors import InvalidFile
+from hiivmind_corpus_lib.graph import Graph, GraphReport, Issue
+from hiivmind_corpus_lib.index import Index
 
 META = "meta:\n  generated_at: \"2026-01-01T00:00:00Z\"\n  concept_count: 2\n  relationship_count: 1\n"
 CONCEPTS = ("concepts:\n  expressions:\n    label: Expressions\n    description: The expression API\n"

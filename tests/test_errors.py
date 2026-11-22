@@ -1,6 +1,6 @@
 import pytest
 
-from hiivmind_corpus.errors import (CorpusError, ExtraMissing, InvalidChanges, InvalidFile, MigrationRefused, NoModel,
+from hiivmind_corpus_lib.errors import (CorpusError, ExtraMissing, InvalidChanges, InvalidFile, MigrationRefused, NoModel,
                                     NoSuchEntry, NoSuchSource, NotACorpus, Refusal, WriteFailed)
 
 

@@ -5,8 +5,8 @@ from dataclasses import replace
 
 import pytest
 
-from hiivmind_corpus.previews import Preview
-from hiivmind_corpus.store import save
+from hiivmind_corpus_lib.previews import Preview
+from hiivmind_corpus_lib.store import save
 from support import open_corpus, write_tree
 
 

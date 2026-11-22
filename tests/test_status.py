@@ -6,10 +6,10 @@ from datetime import UTC, datetime
 
 import pytest
 
-from hiivmind_corpus import embeddings as emb
-from hiivmind_corpus.sources.types import Freshness, Head, SourceStatus, Unobserved
-from hiivmind_corpus.status import IndexFormat, Status
-from hiivmind_corpus.store import save
+from hiivmind_corpus_lib import embeddings as emb
+from hiivmind_corpus_lib.sources.types import Freshness, Head, SourceStatus, Unobserved
+from hiivmind_corpus_lib.status import IndexFormat, Status
+from hiivmind_corpus_lib.store import save
 from support import open_corpus
 
 SHA = "5eaa000000000000000000000000000000000000"
@@ -69,7 +69,7 @@ def test_a_manual_source_alone_does_not_need_a_refresh(tmp_path):
         "schema_version: 2\ncorpus:\n  name: manual\nsources:\n  - id: self\n    type: self\n    docs_root: docs\n",
         encoding="utf-8")
     (d / "index.yaml").write_text("entries: []\n", encoding="utf-8")
-    from hiivmind_corpus import Corpus
+    from hiivmind_corpus_lib import Corpus
     s = Corpus.open(d).status.report({})
     assert s.sources[0].freshness == Freshness.MANUAL
     assert s.refresh_needed is False and s.errors == ()
@@ -143,7 +143,7 @@ def test_an_unrecognised_source_is_unknown_with_its_error(tmp_path):
     (d / "config.yaml").write_text(
         "schema_version: 2\nsources:\n  - id: tickets\n    type: github\n    base: appXYZ\n", encoding="utf-8")
     (d / "index.yaml").write_text("entries: []\n", encoding="utf-8")
-    from hiivmind_corpus import Corpus
+    from hiivmind_corpus_lib import Corpus
     s = Corpus.open(d).status.report({})
     assert s.sources[0].freshness == "unknown" and s.sources[0].error in s.errors
     assert s.refresh_needed is True

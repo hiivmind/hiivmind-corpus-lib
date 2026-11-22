@@ -5,9 +5,9 @@ from datetime import UTC, datetime
 
 import pytest
 
-from hiivmind_corpus.errors import InvalidFile
-from hiivmind_corpus.schema import NULL
-from hiivmind_corpus.index import Entry, Heading, Index, IndexMeta
+from hiivmind_corpus_lib.errors import InvalidFile
+from hiivmind_corpus_lib.schema import NULL
+from hiivmind_corpus_lib.index import Entry, Heading, Index, IndexMeta
 
 from support import golden, open_corpus
 

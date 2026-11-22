@@ -1,7 +1,7 @@
 import pytest
 
-from hiivmind_corpus.errors import InvalidChanges
-from hiivmind_corpus.sources import Change, Changes, Listing, normalise_docs_root, parse_name_status
+from hiivmind_corpus_lib.errors import InvalidChanges
+from hiivmind_corpus_lib.sources import Change, Changes, Listing, normalise_docs_root, parse_name_status
 
 
 def test_the_spec_example():

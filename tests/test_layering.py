@@ -3,9 +3,9 @@
 import ast
 from pathlib import Path
 
-import hiivmind_corpus
+import hiivmind_corpus_lib
 
-PACKAGE = Path(hiivmind_corpus.__file__).parent
+PACKAGE = Path(hiivmind_corpus_lib.__file__).parent
 ROOT = PACKAGE.parent.parent
 FORBIDDEN = ("agent_core", "agent_tools", "tools", "tests")
 BANNED_CALLS = {("os", "system"), ("os", "popen"), ("shutil", "which")}

@@ -7,11 +7,11 @@ from pathlib import Path
 import pytest
 from support import FIXED, open_corpus
 
-from hiivmind_corpus import store
-from hiivmind_corpus.config import Config
-from hiivmind_corpus.errors import NoSuchEntry, WriteFailed
-from hiivmind_corpus.index import AssignResult, Entry, Index, IndexMeta, MergeResult, ScanBatch, SetResult, Skip
-from hiivmind_corpus.schema import NULL
+from hiivmind_corpus_lib import store
+from hiivmind_corpus_lib.config import Config
+from hiivmind_corpus_lib.errors import NoSuchEntry, WriteFailed
+from hiivmind_corpus_lib.index import AssignResult, Entry, Index, IndexMeta, MergeResult, ScanBatch, SetResult, Skip
+from hiivmind_corpus_lib.schema import NULL
 
 DOCS = ".source/polars/docs/source"
 OLD = FIXED.replace(year=2026, month=11, day=19, hour=10)
@@ -206,7 +206,7 @@ def test_a_merge_writes_index_and_markdown_together_and_a_failure_restores_both(
     store.save(corpus, index=corpus.index.load())
     write_files(corpus, ["a.md"])
     before = {n: (corpus.path / n).read_bytes() for n in ("index.yaml", "index.md")}
-    from hiivmind_corpus import files
+    from hiivmind_corpus_lib import files
 
     real, calls = os.replace, []
 
@@ -267,7 +267,7 @@ def test_save_removes_stale_sub_indexes_when_tiered(tmp_path):
     (corpus.path / "index-old.md").write_text("x", encoding="utf-8")
     assert store.save(corpus, index=corpus.index.load()) == ()          # single strategy: nothing stale
     config = corpus.config.load()
-    from hiivmind_corpus.config import Render, RenderSection
+    from hiivmind_corpus_lib.config import Render, RenderSection
 
     tiered = replace(config, render=Render(strategy="tiered", sections=(RenderSection(id="new"),)))
     changed = store.save(corpus, config=tiered)
@@ -279,7 +279,7 @@ def test_save_writes_a_removal_and_a_graph(tmp_path):
     corpus = open_corpus(tmp_path)
     (corpus.path / "extra.txt").write_text("x", encoding="utf-8")
     graph = Path(corpus.path / "graph.yaml").read_text(encoding="utf-8")
-    from hiivmind_corpus.graph import Graph
+    from hiivmind_corpus_lib.graph import Graph
 
     changed = store.save(corpus, graph=Graph.loads(graph), removes=("extra.txt",))
     assert changed == ("extra.txt",) and not (corpus.path / "extra.txt").exists()

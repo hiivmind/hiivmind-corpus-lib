@@ -3,8 +3,8 @@ from pathlib import Path
 
 import pytest
 
-from hiivmind_corpus.errors import InvalidFile
-from hiivmind_corpus.sources import (
+from hiivmind_corpus_lib.errors import InvalidFile
+from hiivmind_corpus_lib.sources import (
     Freshness,
     Head,
     Location,
@@ -12,9 +12,9 @@ from hiivmind_corpus.sources import (
     Snapshot,
     Unobserved,
 )
-from hiivmind_corpus.sources.generated_docs import GeneratedDocsKind
-from hiivmind_corpus.sources.obsidian import ObsidianKind
-from hiivmind_corpus.sources.self_docs import SelfKind
+from hiivmind_corpus_lib.sources.generated_docs import GeneratedDocsKind
+from hiivmind_corpus_lib.sources.obsidian import ObsidianKind
+from hiivmind_corpus_lib.sources.self_docs import SelfKind
 from support import FIXED, StubCorpus
 
 CORPUS = StubCorpus(Path("/c/corpus"), Path("/repo"))
