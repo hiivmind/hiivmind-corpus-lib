@@ -7,9 +7,10 @@ The `hiivmind_corpus_lib` Python package (distribution `hiivmind-corpus-lib`). I
 ## Development
 
 ```bash
-uv sync                      # base dependency: pyyaml; dev group: pytest, lancedb, pyarrow
+uv sync                      # base dependencies; dev group: pytest, lancedb, pyarrow, tokenizers, pymupdf
 uv run pytest -q             # no network, no git, no model
 uv sync --extra embeddings   # the embeddings extra (fastembed, lancedb, pyarrow)
+uv sync --extra pdf         # the pdf extra (pymupdf)
 ```
 
 Python 3.12 or later. Run one pytest process at a time.
@@ -116,6 +117,79 @@ corpus.migration.migrate()
 
 The writes are one atomic set with rollback.
 
+### tokens and markdown
+
+```python
+from hiivmind_corpus_lib import count_tokens, headings, links
+corpus.tokens.count("some text")      # an int: the cached embedding tokenizer if there is one, else ceil(words * 1.3)
+corpus.tokens.method                  # TokenMethod.WORDS or TokenMethod.TOKENIZER
+count_tokens("some text")             # 3 (the word estimate; pass a `Tokenizer` as the second argument to use one)
+headings("# A\n\n## B\n")             # (HeadingLine(level=1, title="A", line=1), HeadingLine(level=2, title="B", line=3))
+links("- [Intro](intro.md)\n")        # (Link(title="Intro", target="intro.md", depth=0),)
+```
+
+### sections and chunks
+
+```python
+from hiivmind_corpus_lib import Strategy, chunks, sections
+sections(text, min_level=2, max_level=4, min_tokens=200)
+# (Section(title="Joins", level=2, line_start=40, line_end=96, tokens=410, anchor="joins", preview="..."), ...)
+chunks(text, Strategy.MARKDOWN, target_tokens=900, overlap_tokens=100)
+# (Chunk(index=0, text="...", line_start=1, line_end=58, overlap_previous=0, heading_context="Joins"), ...)
+```
+
+`Strategy` is `MARKDOWN`, `TRANSCRIPT`, `CODE`, `PARAGRAPH` or `HEADINGS`. Both functions are pure; each takes a `count=` function.
+
+### navigation and content
+
+```python
+nav = corpus.content.navigation("polars")   # reads mkdocs.yml, _sidebar.md, SUMMARY.md or _toc.yml of the source
+# Navigation(found=True, nav_file="mkdocs.yml", format=NavFormat.MKDOCS, hierarchy=(NavItem(...), ...),
+#            coverage=Coverage(nav_entries=40, files_resolved=38, files_missing=2, total_markdown_files=61, percent=...))
+corpus.content.large_files("polars", max_tokens=15000)
+# (LargeFile(path="user-guide/expressions.md", tokens=21000, lines=1203, headings=48, deepest_heading=4), ...)
+corpus.content.sections("polars", "user-guide/expressions.md")             # (Section(...), ...)
+corpus.content.chunks("polars", "user-guide/expressions.md", Strategy.MARKDOWN)   # (Chunk(...), ...)
+```
+
+`navigation_of(root)` does the same for a directory.
+
+### thinning
+
+```python
+corpus.index.thin_sections(min_tokens=300, dry_run=True)
+# ThinResult(sections_before=92, sections_after=71, merges=(Merge(removed="polars:a.md#x", into="polars:a.md#y"), ...))
+```
+
+A section entry whose summary and keywords are under `min_tokens` merges into a neighbour. `dry_run=True` writes nothing.
+
+### search
+
+```python
+corpus.embeddings.embed_chunks({("polars", "a.md"): corpus.content.chunks("polars", "a.md", Strategy.MARKDOWN)})
+# ChunkEmbedResult(files=1, total=12, embedded=12, removed=0)
+corpus.embeddings.meta()    # EmbeddingsMeta(model=..., dimensions=384, generated_at=..., entry_count=79, chunk_count=12)
+corpus.search.entries("lazy evaluation", top_k=5, mode=Mode.HYBRID, rerank=True)
+# (Hit(id="polars:a.md", score=0.83, fields={...}), ...)
+corpus.search.chunks("lazy evaluation")
+```
+
+`Mode` is `VECTOR` (default) or `HYBRID`. Tests pass `embedder=` and `reranker=`. Like `embed`, search never downloads a model.
+
+### pdf
+
+```python
+from hiivmind_corpus_lib.pdf import TocEntry, chapters_from_outline
+outline = (TocEntry(level=1, title="Introduction", page=0), TocEntry(level=2, title="Why", page=1),
+           TocEntry(level=1, title="Basics", page=4))
+chapters_from_outline(outline, page_count=9)
+# (Chapter(index=1, title='Introduction', start_page=0, end_page=4), Chapter(index=2, title='Basics', start_page=4, end_page=9))
+```
+
+`pdf.outline(path)` returns the `TocEntry` tuple of a PDF file (pages are 0-based), and `pdf.chapters(path)` the chapters straight from it.
+
+`hiivmind_corpus_lib.pdf` holds the pure PDF helpers: result types, Markdown emitters, table row clean-up, TeX math decoding, cross-references and chapter splitting. PyMuPDF is imported only inside the calls that read a PDF.
+
 ## Errors
 
 | Error | `.code` | Raised when |
@@ -129,6 +203,9 @@ The writes are one atomic set with rollback.
 | `ExtraMissing` | `extra-missing` | `embed()` or `lag()` without the extra: install `hiivmind-corpus-lib[embeddings]` |
 | `MigrationRefused` | `migration-refused` | `migrate()`; `.reason` is a `Refusal`: `ALREADY_V2`, `NO_V1_INDEX`, `NO_ENTRIES` or `IDS_LOST` |
 | `WriteFailed` | `write-failed` | a multi-file write failed midway; names the files restored and those not |
+| `NoEmbeddings` | `no-embeddings` | `search` finds no table for the corpus (or its chunks): run `embed` first |
+| `ModelMismatch` | `model-mismatch` | `search` on embeddings built with another model than the query's |
+| `NoTextIndex` | `no-text-index` | hybrid `search` on a table without a text index: run `embed` again |
 
 All derive from `CorpusError`. Not errors: `status.report` with no observation for a source, a source of an unrecognised kind, an entry with no `path`, a `drop_missing` listing of another commit.
 
@@ -143,6 +220,15 @@ corpus.embeddings.embed()    # EmbedResult(total=79, embedded=26, removed=33)
 ```
 
 `embed` never downloads a model: without the cached model it raises `NoModel`, without the extra `ExtraMissing`. Tests pass an embedding function as `embed(embedder)`.
+
+## Extras and licence
+
+- `embeddings`: `fastembed`, `lancedb`, `pyarrow` (embeddings, chunk embeddings and search).
+- `pdf`: `pymupdf` (reading PDFs). `import hiivmind_corpus_lib` and `import hiivmind_corpus_lib.pdf` import none of the extras' libraries.
+
+Nothing is ever downloaded: a model that is not cached raises `NoModel`.
+
+PyMuPDF is AGPL-3.0, so this package is licensed AGPL-3.0-or-later when it is first published or served. No licence file is part of this delivery.
 
 ## Canonical formats
 

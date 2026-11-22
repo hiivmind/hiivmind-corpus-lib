@@ -2,15 +2,14 @@
 
 from __future__ import annotations
 
-import math
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
+from .tokens import TOKENS_PER_WORD
+
 if TYPE_CHECKING:
     from .corpus import Corpus
-
-TOKENS_PER_WORD = 1.3
 
 
 @dataclass(frozen=True)
@@ -31,6 +30,7 @@ class PreviewsCapability:
            texts: Mapping[str, str] | None = None) -> tuple[Preview, ...]:
         wanted = set(entry_ids)
         limit = int(token_limit / TOKENS_PER_WORD)
+        count = self._corpus.tokens.counter()
         out = []
         for entry in self._corpus.index.load().entries:
             if entry.id not in wanted or entry.tier == "section":
@@ -43,7 +43,7 @@ class PreviewsCapability:
                 if len(words) > limit:
                     words = words[:limit]
                     text = " ".join(words)
-                content, tokens = text, math.ceil(len(words) * TOKENS_PER_WORD)
+                content, tokens = text, count(text)
             out.append(Preview(entry.id, entry.title, entry.summary, entry.path, content, tokens))
         return tuple(out)
 

@@ -91,3 +91,12 @@ def test_an_entry_with_file_and_url_reads_the_file_and_falls_back_to_the_text(tm
     write_tree(corpus.path, {"cache/web/x.md": "on disk"})
     [read] = corpus.previews.of(["web:x.md"], texts=texts)
     assert read.content_preview == "on disk"
+
+
+def test_previews_count_through_the_corpus_tokens(corpus):  # CMP-5
+    from types import SimpleNamespace
+
+    _put(corpus, "a.md", "some words here")
+    corpus.tokens = SimpleNamespace(counter=lambda: lambda text: 42)
+    [preview] = corpus.previews.of(["polars:a.md"])
+    assert preview.estimated_tokens == 42

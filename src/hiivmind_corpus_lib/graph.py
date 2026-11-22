@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Iterable
+from collections.abc import Callable, Iterable, Mapping
 from dataclasses import dataclass, field, replace
 from datetime import datetime
 from typing import TYPE_CHECKING, Any
@@ -87,12 +87,24 @@ class Graph:
 
     def without_entries(self, ids: set[str]) -> Graph:
         """Schema 1: the ids leave each concept's `entries` and `entry_count` follows. Else `self`."""
+        return self._with_concept_entries(lambda entries: tuple(e for e in entries if e not in ids))
+
+    def with_entries_merged(self, into: Mapping[str, str]) -> Graph:
+        """Schema 1: each id merged away is replaced, once, by the entry it finally went into. Else `self`."""
+        def final(entry_id: str) -> str:
+            while entry_id in into:
+                entry_id = into[entry_id]
+            return entry_id
+
+        return self._with_concept_entries(lambda entries: tuple(dict.fromkeys(final(e) for e in entries)))
+
+    def _with_concept_entries(self, rewrite: Callable[[tuple[str, ...]], tuple[str, ...]]) -> Graph:
         if self.schema_version != 1 or self.concepts is None:
             return self
         concepts = {}
-        for cid, concept in (self.concepts or {}).items():
+        for cid, concept in self.concepts.items():
             if concept.entries is not None:
-                kept = tuple(e for e in concept.entries if e not in ids)
+                kept = rewrite(concept.entries)
                 if kept != concept.entries:
                     count = len(kept) if concept.entry_count is not None else None
                     concept = replace(concept, entries=kept, entry_count=count)

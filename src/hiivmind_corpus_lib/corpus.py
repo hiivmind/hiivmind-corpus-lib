@@ -9,6 +9,7 @@ from os import PathLike
 from pathlib import Path
 
 from .config import FILE, ConfigCapability
+from .content import ContentCapability
 from .embeddings import EmbeddingsCapability
 from .errors import NotACorpus
 from .graph import GraphCapability
@@ -16,8 +17,10 @@ from .index import IndexCapability
 from .migration import MigrationCapability
 from .previews import PreviewsCapability
 from .render import RenderCapability
+from .search import SearchCapability
 from .sources import SourcesCapability
 from .status import StatusCapability
+from .tokens import TokensCapability
 
 PLACEHOLDER = "Run hiivmind-corpus-build"
 
@@ -36,8 +39,11 @@ class Corpus:
         self.graph = GraphCapability(self)
         self.render = RenderCapability(self)
         self.sources = SourcesCapability(self)
+        self.tokens = TokensCapability(self)
+        self.content = ContentCapability(self)
         self.previews = PreviewsCapability(self)
         self.embeddings = EmbeddingsCapability(self)
+        self.search = SearchCapability(self)
         self.status = StatusCapability(self)
         self.migration = MigrationCapability(self)
 

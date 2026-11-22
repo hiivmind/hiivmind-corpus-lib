@@ -7,7 +7,6 @@ from dataclasses import dataclass, replace
 from datetime import datetime
 from typing import TYPE_CHECKING
 
-from ..errors import NoSuchSource
 from ..index import Entry, Index, IndexMeta, duplicate_id
 from .types import (
     SOURCE_KINDS,
@@ -95,10 +94,7 @@ class SourcesCapability:
         return tuple(out)
 
     def _source(self, config: Config, source_id: str):
-        source = next((s for s in config.sources if s.id == source_id), None)
-        if source is None:
-            raise NoSuchSource(f"config.yaml has no source `{source_id}`")
-        return source
+        return config.source(source_id)
 
     def _save(self, config: Config | None, before: Index, after: Index, gone: set[str]) -> None:
         """One save of what changed; the graph only when it exists and cleaning changed it."""
