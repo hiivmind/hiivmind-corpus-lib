@@ -139,6 +139,19 @@ class AssignResult:
     assigned: tuple[str, ...]
 
 
+@dataclass(frozen=True)
+class Merge:
+    removed: str
+    into: str
+
+
+@dataclass(frozen=True)
+class ThinResult:
+    sections_before: int
+    sections_after: int
+    merges: tuple[Merge, ...]
+
+
 NOT_INDEXED = "no entry in the index"
 NO_SCAN = "no scan returned for it (file unreadable or not in the source)"
 UNREADABLE = "the file cannot be read or the entry names no file"
@@ -263,3 +276,11 @@ class IndexCapability:
                 for e in index.entries)
             self._save(replace(index, entries=current))
         return MergeResult(enriched=tuple(done), skipped=tuple(skipped))
+
+    def thin_sections(self, min_tokens: int = 300, *, dry_run: bool = False) -> ThinResult:
+        from .thinning import thin
+
+        thinned, result = thin(self.load(), min_tokens)
+        if result.merges and not dry_run:
+            self._save(thinned)
+        return result
