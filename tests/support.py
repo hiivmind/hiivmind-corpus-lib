@@ -2,7 +2,16 @@
 
 from dataclasses import dataclass
 from datetime import UTC, datetime
+from importlib.util import find_spec
 from pathlib import Path
+
+import pytest
+
+
+def needs(module: str) -> pytest.MarkDecorator:
+    """Skip a test that needs an optional extra's module when it is not installed (the base install has none)."""
+    return pytest.mark.skipif(find_spec(module) is None, reason=f"{module} is not installed")
+
 
 FIXED = datetime(2026, 11, 20, 9, 0, tzinfo=UTC)
 

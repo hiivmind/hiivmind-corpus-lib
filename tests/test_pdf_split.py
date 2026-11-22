@@ -1,6 +1,9 @@
 import json
-import pymupdf
+
 import pytest
+
+pymupdf = pytest.importorskip("pymupdf")
+
 from hiivmind_corpus_lib.errors import InvalidFile
 from hiivmind_corpus_lib.pdf import Chapter, ChapterPdf, Manifest, split
 from pdf_support import make_pdf

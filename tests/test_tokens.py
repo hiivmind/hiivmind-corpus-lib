@@ -2,7 +2,7 @@ import pytest
 
 from hiivmind_corpus_lib import embeddings as emb
 from hiivmind_corpus_lib.tokens import TokenMethod, count_tokens
-from support import open_corpus
+from support import needs, open_corpus
 
 REPO_DIR = "models--qdrant--bge-small-en-v1.5-onnx-q"
 
@@ -63,6 +63,7 @@ def test_without_a_cached_model_the_corpus_counts_words_and_creates_nothing(corp
     assert not (tmp_path / "fastembed").exists()
 
 
+@needs("tokenizers")
 def test_with_the_model_cached_the_corpus_counts_with_its_tokenizer(corpus, tmp_path):  # TOK-2
     _cache_model(tmp_path)
     assert corpus.tokens.method == TokenMethod.TOKENIZER
@@ -70,16 +71,19 @@ def test_with_the_model_cached_the_corpus_counts_with_its_tokenizer(corpus, tmp_
     assert count_tokens("alpha beta", corpus.tokens.tokenizer) == 2
 
 
+@needs("tokenizers")
 def test_a_cached_model_without_a_tokenizer_file_counts_words(corpus, tmp_path):  # TOK-2
     _cache_model(tmp_path, tokenizer=False)
     assert corpus.tokens.method == TokenMethod.WORDS
 
 
+@needs("tokenizers")
 def test_a_cached_tokenizer_without_the_cached_model_counts_words(corpus, tmp_path):  # TOK-2: the tokenizer is the model's, so the model must be cached too
     _cache_model(tmp_path, model=False)
     assert corpus.tokens.method == TokenMethod.WORDS
 
 
+@needs("tokenizers")
 def test_without_the_extra_the_corpus_counts_words_even_when_cached(corpus, tmp_path, monkeypatch):  # TOK-2
     _cache_model(tmp_path)
     monkeypatch.setattr(emb, "find_spec", lambda name: None)
