@@ -13,6 +13,32 @@ def golden(path: str) -> str:
     return (GOLDEN / path).read_text(encoding="utf-8")
 
 
+class LengthEmbedder:
+    def __init__(self):
+        self.seen = []
+
+    def __call__(self, texts):
+        self.seen.append(list(texts))
+        return [[float(len(t))] + [0.0] * 383 for t in texts]
+
+
+class TopicEmbedder:
+    """One-hot by topic; `queries` maps a full "query: ..." text to a topic."""
+
+    TOPICS = {"lazy": 1, "reading": 2, "expressions": 0}  # checked in this order; anything else -> dim 3
+
+    def __init__(self, queries=None):
+        self.seen, self.queries = [], queries or {}
+
+    def __call__(self, texts):
+        self.seen.append(list(texts))
+        out = []
+        for t in texts:
+            dim = self.queries.get(t) if t in self.queries else next((d for w, d in self.TOPICS.items() if w in t.lower()), 3)
+            out.append([1.0 if i == dim else 0.0 for i in range(384)])
+        return out
+
+
 @dataclass(frozen=True)
 class StubCorpus:
     """What a source kind needs of a Corpus: its path, repo root, name and clock."""

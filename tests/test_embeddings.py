@@ -1,5 +1,6 @@
 """`corpus.embeddings`: status, lag and the incremental embed (spec 7.10, EMB-1..6, D11, E7, E8, PKG-8)."""
 
+import json
 import subprocess
 import sys
 from dataclasses import replace
@@ -10,10 +11,13 @@ import pytest
 pytest.importorskip("lancedb")
 
 from hiivmind_corpus_lib import embeddings as emb
-from hiivmind_corpus_lib.embeddings import DIMENSIONS, HASH_COLUMN, META_TABLE, TABLE_NAME, EmbeddingsState, EmbedResult
+from hiivmind_corpus_lib.embeddings import (
+    DIMENSIONS, HASH_COLUMN, META_TABLE, TABLE_NAME, EmbeddingsMeta, EmbeddingsState, EmbedResult,
+)
 from hiivmind_corpus_lib.errors import ExtraMissing, NoModel
+from hiivmind_corpus_lib.index import Entry
 from hiivmind_corpus_lib.store import save
-from support import open_corpus
+from support import FIXED, LengthEmbedder as Embedder, open_corpus
 
 LANCE = "index-embeddings.lance"
 REPO_DIR = "models--qdrant--bge-small-en-v1.5-onnx-q"
@@ -24,15 +28,6 @@ def corpus(tmp_path, monkeypatch):
     monkeypatch.setenv("FASTEMBED_CACHE_PATH", str(tmp_path / "fastembed"))
     monkeypatch.setattr(emb, "find_spec", lambda name: object())  # fastembed is not a dev dependency
     return open_corpus(tmp_path)
-
-
-class Embedder:
-    def __init__(self):
-        self.seen = []
-
-    def __call__(self, texts):
-        self.seen.append(list(texts))
-        return [[float(len(t))] + [0.0] * (DIMENSIONS - 1) for t in texts]
 
 
 def _db(corpus):
@@ -229,3 +224,60 @@ def test_a_legacy_table_over_an_empty_index_is_emptied_and_rebuilt(corpus):
     assert _rows(corpus) == []
     assert HASH_COLUMN in [f.name for f in _db(corpus).open_table(TABLE_NAME).schema]
     assert _meta(corpus)["entry_count"] == "0"
+
+
+def test_embed_creates_the_full_text_index(corpus):  # EMB-2
+    corpus.embeddings.embed(Embedder())
+    assert [(i.index_type, i.columns) for i in _db(corpus).open_table(TABLE_NAME).list_indices()] == [("FTS", ["metadata_text"])]
+
+
+def test_embed_recreates_a_missing_text_index_even_when_nothing_changed(corpus):  # EMB-2
+    corpus.embeddings.embed(Embedder())
+    _db(corpus).open_table(TABLE_NAME).drop_index("metadata_text_idx")
+    assert corpus.embeddings.embed(Embedder()).embedded == 0
+    assert [i.index_type for i in _db(corpus).open_table(TABLE_NAME).list_indices()] == ["FTS"]
+
+
+@pytest.mark.parametrize("n, vector_index", [(500, False), (501, True)])
+def test_embed_creates_a_cosine_vector_index_above_500_rows(corpus, n, vector_index):  # EMB-3
+    index = corpus.index.load()
+    entries = tuple(Entry(id=f"polars:n{i}.md", source="polars", path=f"n{i}.md", title=f"T{i}") for i in range(n))
+    save(corpus, index=replace(index, entries=entries))
+    corpus.embeddings.embed(Embedder())
+    assert ("IvfPq" in [i.index_type for i in _db(corpus).open_table(TABLE_NAME).list_indices()]) is vector_index
+
+
+def test_meta_after_embed(corpus):
+    assert corpus.embeddings.meta() is None  # no database
+    corpus.embeddings.embed(Embedder())
+    assert corpus.embeddings.meta() == EmbeddingsMeta("BAAI/bge-small-en-v1.5", 384, FIXED, entry_count=3, chunk_count=None)
+
+
+def test_meta_is_none_without_a_meta_table(corpus):
+    (corpus.path / LANCE).mkdir()
+    assert corpus.embeddings.meta() is None
+
+
+def test_meta_reads_the_legacy_meta_json(corpus):
+    (corpus.path / LANCE).mkdir()
+    (corpus.path / LANCE / "_meta.json").write_text(json.dumps({"model": "BAAI/bge-small-en-v1.5", "dimensions": 384,
+        "generated_at": "2026-11-19T11:53:39.123456+00:00", "entry_count": 747}))
+    assert corpus.embeddings.meta() == EmbeddingsMeta("BAAI/bge-small-en-v1.5", 384,
+        datetime(2026, 11, 19, 11, 53, 39, 123456, tzinfo=UTC), 747, None)
+    corpus.embeddings.embed(Embedder())
+    assert corpus.embeddings.meta().entry_count == 3 and (corpus.path / LANCE / "_meta.json").exists()
+
+
+def test_embed_keeps_the_chunk_count_of_a_legacy_meta_json(corpus):  # EMB-4
+    (corpus.path / LANCE).mkdir()
+    (corpus.path / LANCE / "_meta.json").write_text(json.dumps({"model": "BAAI/bge-small-en-v1.5", "dimensions": 384,
+        "generated_at": "2026-11-19T11:53:39+00:00", "entry_count": 1, "chunk_count": 9}))
+    corpus.embeddings.embed(Embedder())
+    assert corpus.embeddings.meta().chunk_count == 9 and _meta(corpus)["chunk_count"] == "9"
+
+
+def test_metadata_text_of_an_entry_without_concepts_ends_with_the_separator(corpus):
+    index = corpus.index.load()
+    save(corpus, index=replace(index, entries=(replace(index.entries[0], concepts=None), *index.entries[1:])))
+    corpus.embeddings.embed(Embedder())
+    assert next(r for r in _rows(corpus) if r["id"] == "polars:a.md")["metadata_text"] == "Expressions | Expressions in Polars. | expressions |"
