@@ -118,7 +118,7 @@ def _source(raw: Any, n: int) -> Source | UnrecognisedSource:
     if found_type is not None and not isinstance(found_type, str):
         raise InvalidFile(FILE, f"{where}.type",
                           f"`{where}.type` must be a string, found {_found(found_type)}")
-    kind = SOURCE_KINDS.get(found_type)
+    kind = None if found_type is None else SOURCE_KINDS.get(found_type)
     if kind is None:
         found_id = raw.get("id")
         return UnrecognisedSource(

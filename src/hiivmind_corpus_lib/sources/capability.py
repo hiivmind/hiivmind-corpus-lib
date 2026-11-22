@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from dataclasses import dataclass, replace
-from datetime import datetime
 from typing import TYPE_CHECKING
 
 from ..index import Entry, Index, IndexMeta, duplicate_id
@@ -17,7 +16,6 @@ from .types import (
     Observation,
     SourceStatus,
     Unobserved,
-    UnrecognisedSource,
     kind_of,
 )
 

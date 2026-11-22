@@ -80,8 +80,7 @@ def layout_table(rows: Sequence[Row]) -> str:
     """Markdown for raw extracted rows; sub-tables too sparse (over half empty) or wide (over 8 columns) become code blocks."""
     parts: list[str] = []
     for sub in split_subtables(rows):
-        cleaned = [tuple((c or "").strip() for c in row) for row in sub]
-        cleaned = merge_continuation_rows(cleaned)
+        cleaned = merge_continuation_rows([tuple((c or "").strip() for c in row) for row in sub])
         cleaned = merge_continuation_rows(expand_newline_cells(cleaned))
         headers, body = strip_empty_columns(cleaned[0], cleaned[1:])
         if not ("".join(headers) + "".join("".join(r) for r in body)).strip():

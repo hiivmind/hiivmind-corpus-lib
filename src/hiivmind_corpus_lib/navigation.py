@@ -51,7 +51,7 @@ class _Loader(yaml.SafeLoader):
     """SafeLoader that reads unknown tags (`!!python/name:…`, `!ENV …`) as None."""
 
 
-_Loader.add_constructor(None, lambda loader, node: None)
+_Loader.add_constructor(None, lambda loader, node: None)  # type: ignore[arg-type]  # None is PyYAML's catch-all tag; the stubs say str
 
 _CANDIDATES = (
     ("mkdocs.yml", NavFormat.MKDOCS),
@@ -159,7 +159,8 @@ def _jupyter_book(root: Path, path: Path) -> tuple[NavItem, ...]:
         if leaf:
             items.append(leaf)
     items.extend(_toc_entries(root, data.get("chapters"), 0))
-    for part in data.get("parts") if isinstance(data.get("parts"), list) else ():
+    parts = data.get("parts")
+    for part in parts if isinstance(parts, list) else ():
         if isinstance(part, dict):
             items.append(NavItem(str(part.get("caption", "")), None, 0, _toc_entries(root, part.get("chapters"), 1)))
     return tuple(items)

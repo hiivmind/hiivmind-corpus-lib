@@ -16,7 +16,7 @@ from enum import StrEnum
 from importlib.util import find_spec
 from pathlib import Path
 from types import ModuleType
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from .errors import ExtraMissing, NoModel
 from .schema import parse_timestamp, stamp
@@ -116,7 +116,7 @@ def _sql_quote(value: str) -> str:
 def _default_embedder() -> Embedder:
     from fastembed import TextEmbedding
 
-    model = TextEmbedding(model_name=MODEL_NAME, local_files_only=True)
+    model: Any = TextEmbedding(model_name=MODEL_NAME, local_files_only=True)  # embed() yields numpy arrays of several dtypes
     return lambda texts: [vector.tolist() for vector in model.embed(list(texts))]
 
 
@@ -172,8 +172,8 @@ def _write_meta(db, pa, directory: Path, now: str, *, generated_at: str | None =
     """Overwrite `_meta`: each argument, else the existing value (`generated_at` finally `now`)."""
     old = _read_meta(db, directory)
     meta = {"model": MODEL_NAME, "dimensions": str(DIMENSIONS), "generated_at": generated_at or old.get("generated_at") or now}
-    for key, value in (("entry_count", entry_count), ("chunk_count", chunk_count)):
-        value = str(value) if value is not None else old.get(key)
+    for key, count in (("entry_count", entry_count), ("chunk_count", chunk_count)):
+        value = str(count) if count is not None else old.get(key)
         if value is not None:
             meta[key] = value
     fields = pa.schema([pa.field("key", pa.string()), pa.field("value", pa.string())])

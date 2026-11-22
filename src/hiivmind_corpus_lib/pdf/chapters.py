@@ -5,7 +5,7 @@ from collections.abc import Sequence
 from pathlib import Path
 
 from ._lib import _document
-from .reading import _blocks_of, outline
+from .reading import _blocks_of
 from .types import Chapter, TocEntry
 
 _CHAPTER_LINE = re.compile(r"^Chapter\s+(\d+|[IVXLC]+)", re.IGNORECASE)
