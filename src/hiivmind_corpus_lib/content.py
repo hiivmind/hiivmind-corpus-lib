@@ -6,8 +6,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
-from . import chunks as _chunks
-from . import sections as _sections
+from .chunks import chunks as _chunks
+from .sections import sections as _sections
 from .errors import InvalidFile
 from .markdown import headings
 from .navigation import Coverage, Navigation, markdown_files, navigation_of
@@ -80,8 +80,8 @@ class ContentCapability:
 
     def sections(self, source_id: str, path: str, **options: Any) -> tuple[Section, ...]:
         options.setdefault("count", self._corpus.tokens.count)
-        return _sections.sections(self._text(source_id, path), **options)
+        return _sections(self._text(source_id, path), **options)
 
     def chunks(self, source_id: str, path: str, strategy: Strategy, **options: Any) -> tuple[Chunk, ...]:
         options.setdefault("count", self._corpus.tokens.count)
-        return _chunks.chunks(self._text(source_id, path), strategy, **options)
+        return _chunks(self._text(source_id, path), strategy, **options)

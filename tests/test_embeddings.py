@@ -1,7 +1,6 @@
 """`corpus.embeddings`: status, lag and the incremental embed (spec 7.10, EMB-1..6, D11, E7, E8, PKG-8)."""
 
 import json
-import subprocess
 import sys
 from dataclasses import replace
 from datetime import UTC, datetime
@@ -178,12 +177,6 @@ def test_embed_of_an_empty_index_creates_no_table(corpus):
     save(corpus, index=replace(corpus.index.load(), entries=()))
     assert corpus.embeddings.embed(Embedder()) == EmbedResult(0, 0, 0)
     assert not (corpus.path / LANCE / f"{TABLE_NAME}.lance").exists()
-
-
-def test_importing_the_package_imports_no_embedding_library():
-    code = "import sys, hiivmind_corpus_lib; assert not {'fastembed', 'lancedb', 'pyarrow'} & set(sys.modules)"
-    done = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True)
-    assert done.returncode == 0, done.stderr
 
 
 def test_status_and_lag_need_fastembed_too(corpus, monkeypatch):

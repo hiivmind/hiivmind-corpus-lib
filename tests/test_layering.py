@@ -1,6 +1,8 @@
 """The package is a library of capabilities: it imports neither agent-core nor the instance, runs no command, ships no scripts."""
 
 import ast
+import subprocess
+import sys
 from pathlib import Path
 
 import hiivmind_corpus_lib
@@ -56,3 +58,10 @@ def test_the_package_has_no_script_files():
     if "[project.scripts]" in (ROOT / "pyproject.toml").read_text():
         found.append("pyproject.toml: [project.scripts]")
     assert found == []
+
+
+def test_importing_the_package_imports_no_extra():
+    code = ("import sys, hiivmind_corpus_lib, hiivmind_corpus_lib.pdf; "
+            "assert not {'fastembed', 'lancedb', 'pyarrow', 'pymupdf', 'fitz'} & set(sys.modules)")
+    done = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True)
+    assert done.returncode == 0, done.stderr
