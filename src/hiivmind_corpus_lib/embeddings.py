@@ -234,16 +234,11 @@ class EmbeddingsCapability:
         return EmbeddingsState.READY if _model_cached() else EmbeddingsState.NO_MODEL
 
     def lag(self) -> int | None:
-        """Entries indexed after the table was generated; `None` when there is no table or no `_meta`."""
+        """Entries indexed after the table was generated; `None` when there is no table or no `_meta` (table or legacy file)."""
         if not self._dir.is_dir():
             return None
         lancedb, _ = self._require()
-        db = lancedb.connect(str(self._dir))
-        if META_TABLE not in db.list_tables().tables:
-            return None
-        arrow = db.open_table(META_TABLE).to_arrow()
-        meta = dict(zip(arrow.column("key").to_pylist(), arrow.column("value").to_pylist(), strict=True))
-        generated = meta.get("generated_at")
+        generated = _read_meta(lancedb.connect(str(self._dir)), self._dir).get("generated_at")
         if generated is None:
             return None
         when = parse_timestamp(generated, LANCE_DIR, "_meta.generated_at")
