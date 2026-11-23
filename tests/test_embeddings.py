@@ -161,6 +161,11 @@ def test_embed_without_the_model_raises_no_model(corpus, monkeypatch):
     corpus.embeddings.embed(Embedder())
 
 
+def test_embed_with_nothing_to_embed_needs_no_model(corpus):  # the default embedder is made only for texts to embed
+    corpus.embeddings.embed(Embedder())
+    assert corpus.embeddings.embed() == EmbedResult(3, 0, 0)
+
+
 def test_embed_and_lag_without_the_extra_raise_extra_missing(corpus, monkeypatch):
     assert corpus.embeddings.lag() is None
     (corpus.path / LANCE).mkdir()

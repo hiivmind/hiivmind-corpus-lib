@@ -146,6 +146,12 @@ def test_embed_chunks_without_the_model_or_the_extra(corpus, monkeypatch):  # P-
         corpus.embeddings.embed_chunks({("polars", "a.md"): [ch(0, "A0", 1, 2)]}, LengthEmbedder())
 
 
+def test_embed_chunks_with_nothing_to_embed_needs_no_model(corpus):  # the default embedder is made only for texts to embed
+    given = {("polars", "a.md"): [ch(0, "One.", 1, 2)]}
+    corpus.embeddings.embed_chunks(given, LengthEmbedder())
+    assert corpus.embeddings.embed_chunks(given) == ChunkEmbedResult(1, 1, 0, 0)
+
+
 def test_embed_chunks_with_nothing_to_write_creates_no_lance_directory(corpus):
     assert corpus.embeddings.embed_chunks({}, LengthEmbedder()) == ChunkEmbedResult(0, 0, 0, 0)
     assert corpus.embeddings.embed_chunks({("polars", "a.md"): []}, LengthEmbedder()).total == 0
