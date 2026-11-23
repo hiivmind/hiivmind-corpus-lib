@@ -102,6 +102,26 @@ def test_a_corpus_has_the_new_capabilities(tmp_path):                  # PKG-4 e
     assert all(hasattr(corpus, name) for name in ("tokens", "content", "search"))
 
 
+OPERATIONS = (("tokens", "count"), ("tokens", "method"), ("tokens", "tokenizer"), ("content", "navigation"),
+              ("content", "large_files"), ("content", "sections"), ("content", "chunks"), ("index", "thin_sections"),
+              ("embeddings", "embed_chunks"), ("embeddings", "meta"), ("search", "entries"), ("search", "chunks"))
+
+
+@pytest.mark.parametrize(("capability", "operation"), OPERATIONS)
+def test_each_capability_of_the_inventory_has_its_operation(tmp_path, capability, operation):   # CMP-1, design §5
+    assert hasattr(type(getattr(open_corpus(tmp_path), capability)), operation)
+
+
+EMBEDDINGS_CONSTANTS = ("MODEL_NAME", "DIMENSIONS", "TABLE_NAME", "CHUNKS_TABLE", "META_TABLE", "PASSAGE_PREFIX",
+                        "QUERY_PREFIX", "VECTOR_INDEX_THRESHOLD")
+
+
+@pytest.mark.parametrize("name", EMBEDDINGS_CONSTANTS)
+def test_the_plugin_constants_are_constants_of_embeddings(name):        # CMP-1, design §5
+    from hiivmind_corpus_lib import embeddings
+    assert hasattr(embeddings, name)
+
+
 @pytest.mark.parametrize("name", ["NoEmbeddings", "ModelMismatch", "NoTextIndex"])
 def test_the_new_errors_have_their_codes(name):                        # P-4
     codes = {"NoEmbeddings": "no-embeddings", "ModelMismatch": "model-mismatch", "NoTextIndex": "no-text-index"}

@@ -2,7 +2,7 @@ import subprocess, sys
 import pytest
 from hiivmind_corpus_lib.errors import ExtraMissing, InvalidFile
 from hiivmind_corpus_lib.pdf import Chapter, chapters, chapters_by_font, fonts, outline, page_count, split, tables, text_blocks
-from pdf_support import make_png
+from pdf_support import make_encrypted_pdf, make_png
 from support import needs
 
 CALLS = {
@@ -23,11 +23,13 @@ def test_every_pdf_call_without_the_extra_names_the_extra(name, tmp_path, monkey
 
 @needs("pymupdf")
 @pytest.mark.parametrize("name", CALLS)
-@pytest.mark.parametrize("kind", ["text", "empty", "png"])
+@pytest.mark.parametrize("kind", ["text", "empty", "png", "encrypted"])
 def test_every_pdf_call_on_an_unreadable_file_is_invalid_file(name, kind, tmp_path):   # design §10
     path = tmp_path / "bad.pdf"
     if kind == "png":
         make_png(path)                                               # PyMuPDF opens it, but Document.is_pdf is False
+    elif kind == "encrypted":
+        make_encrypted_pdf(path)                                     # PyMuPDF opens it, but it needs a password
     else:
         path.write_bytes(b"not a pdf" if kind == "text" else b"")
     with pytest.raises(InvalidFile) as raised:

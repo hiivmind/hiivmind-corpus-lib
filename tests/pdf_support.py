@@ -25,6 +25,15 @@ def make_png(path: Path) -> Path:
     return path
 
 
+def make_encrypted_pdf(path: Path) -> Path:
+    import pymupdf
+    doc = pymupdf.open()
+    doc.new_page().insert_text((72, 72), "secret")
+    doc.save(str(path), encryption=pymupdf.PDF_ENCRYPT_AES_256, user_pw="user", owner_pw="owner")
+    doc.close()
+    return path
+
+
 def make_table_pdf(path: Path, rows: Sequence[Sequence[str]]) -> Path:
     import pymupdf
     doc = pymupdf.open()
