@@ -152,6 +152,15 @@ def test_lag_without_meta_and_with_the_old_generated_at(corpus):
     assert corpus.embeddings.lag() == 1
 
 
+def test_lag_reads_the_legacy_meta_json(corpus):  # the published corpora carry only the plugin's _meta.json
+    (corpus.path / LANCE).mkdir()
+    (corpus.path / LANCE / "_meta.json").write_text(json.dumps({"generated_at": "2026-11-19T11:53:39+00:00"}))
+    index = corpus.index.load()
+    entries = (replace(index.entries[0], last_indexed=datetime(2026, 11, 19, 12, tzinfo=UTC)), *index.entries[1:])
+    save(corpus, index=replace(index, entries=entries))
+    assert corpus.embeddings.lag() == 1
+
+
 def test_embed_without_the_model_raises_no_model(corpus, monkeypatch):
     with pytest.raises(NoModel) as caught:
         corpus.embeddings.embed()
@@ -159,6 +168,11 @@ def test_embed_without_the_model_raises_no_model(corpus, monkeypatch):
     assert not (corpus.path / LANCE).exists()
     assert not (corpus.path.parent / "fastembed").exists()
     corpus.embeddings.embed(Embedder())
+
+
+def test_embed_with_nothing_to_embed_needs_no_model(corpus):  # the default embedder is made only for texts to embed
+    corpus.embeddings.embed(Embedder())
+    assert corpus.embeddings.embed() == EmbedResult(3, 0, 0)
 
 
 def test_embed_and_lag_without_the_extra_raise_extra_missing(corpus, monkeypatch):

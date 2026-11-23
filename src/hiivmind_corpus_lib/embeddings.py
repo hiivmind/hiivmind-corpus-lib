@@ -234,16 +234,11 @@ class EmbeddingsCapability:
         return EmbeddingsState.READY if _model_cached() else EmbeddingsState.NO_MODEL
 
     def lag(self) -> int | None:
-        """Entries indexed after the table was generated; `None` when there is no table or no `_meta`."""
+        """Entries indexed after the table was generated; `None` when there is no table or no `_meta` (table or legacy file)."""
         if not self._dir.is_dir():
             return None
         lancedb, _ = self._require()
-        db = lancedb.connect(str(self._dir))
-        if META_TABLE not in db.list_tables().tables:
-            return None
-        arrow = db.open_table(META_TABLE).to_arrow()
-        meta = dict(zip(arrow.column("key").to_pylist(), arrow.column("value").to_pylist(), strict=True))
-        generated = meta.get("generated_at")
+        generated = _read_meta(lancedb.connect(str(self._dir)), self._dir).get("generated_at")
         if generated is None:
             return None
         when = parse_timestamp(generated, LANCE_DIR, "_meta.generated_at")
@@ -252,11 +247,12 @@ class EmbeddingsCapability:
 
     def embed(self, embedder: Embedder | None = None) -> EmbedResult:
         lancedb, pa = self._require(fastembed=embedder is None)
-        embedder = resolve_embedder(embedder)
         entries = self._corpus.index.load().entries
-        db = lancedb.connect(str(self._dir)) if entries or self._dir.is_dir() else None
-        if db is None:
+        if not entries and not self._dir.is_dir():
             return EmbedResult(0, 0, 0)
+        if not self._dir.is_dir():
+            embedder = resolve_embedder(embedder)  # a new database: every entry is embedded, so the model is checked first
+        db = lancedb.connect(str(self._dir))
 
         rows = {}
         for entry in entries:
@@ -278,7 +274,7 @@ class EmbeddingsCapability:
 
         schema = None
         if todo or rebuild:
-            vectors = embedder([(PASSAGE_PREFIX + r[1]).strip() for r in todo]) if todo else []
+            vectors = resolve_embedder(embedder)([(PASSAGE_PREFIX + r[1]).strip() for r in todo]) if todo else []
             now = stamp(self._corpus.now())
             schema = pa.schema([pa.field("id", pa.string()), pa.field("source", pa.string()), pa.field("title", pa.string()),
                                 pa.field("tags", pa.list_(pa.string())), pa.field("concepts", pa.list_(pa.string())),
@@ -306,9 +302,10 @@ class EmbeddingsCapability:
     def embed_chunks(self, chunks: Mapping[tuple[str, str], Sequence[Chunk]], embedder: Embedder | None = None) -> ChunkEmbedResult:
         """Replace the chunk rows of each given (source, path); other files' rows stay. Unchanged chunks keep their vectors."""
         lancedb, pa = self._require(fastembed=embedder is None)
-        embedder = resolve_embedder(embedder)
         if not any(chunks.values()) and not self._dir.is_dir():
             return ChunkEmbedResult(len(chunks), 0, 0, 0)
+        if not self._dir.is_dir():
+            embedder = resolve_embedder(embedder)  # a new database: every chunk is embedded, so the model is checked first
         db = lancedb.connect(str(self._dir))
         index = self._corpus.index.load()
         now = stamp(self._corpus.now())
@@ -331,7 +328,7 @@ class EmbeddingsCapability:
 
         write = [i for i in given if i not in old or not given[i].matches(old[i])]
         fresh = [i for i in write if i not in old or old[i][HASH_COLUMN] != given[i].digest]
-        vectors = list(embedder([given[i].text for i in fresh])) if fresh else []
+        vectors = list(resolve_embedder(embedder)([given[i].text for i in fresh])) if fresh else []
         new_vectors = dict(zip(fresh, vectors, strict=True))
         if write:
             schema = pa.schema([pa.field("id", pa.string()), pa.field("parent", pa.string()), pa.field("source", pa.string()),
