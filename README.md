@@ -228,7 +228,7 @@ corpus.embeddings.embed()    # EmbedResult(total=79, embedded=26, removed=33)
 
 Nothing is ever downloaded: a model that is not cached raises `NoModel`.
 
-PyMuPDF is AGPL-3.0, so this package is licensed AGPL-3.0-or-later when it is first published or served. No licence file is part of this delivery.
+Licensed under the GNU Affero General Public License v3.0 or later ([LICENSE](LICENSE)), because the `pdf` extra builds on PyMuPDF, which is AGPL-3.0.
 
 ## Canonical formats
 

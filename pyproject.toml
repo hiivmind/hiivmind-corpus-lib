@@ -8,6 +8,8 @@ dynamic = ["version"]
 description = "The corpus capabilities: one Corpus object over a corpus directory"
 readme = "README.md"
 requires-python = ">=3.12"
+license = "AGPL-3.0-or-later"
+license-files = ["LICENSE"]
 authors = [
     { name = "Nathaniel Ramm", email = "nathaniel.ramm@discretedatascience.com" },
 ]
